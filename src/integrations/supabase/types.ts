@@ -14,16 +14,295 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      internet_plans: {
+        Row: {
+          category: string
+          created_at: string
+          download_limit_mb: number | null
+          duration_type: string
+          duration_value: number
+          id: string
+          is_active: boolean
+          name: string
+          price_kes: number
+          speed_limit_mbps: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          download_limit_mb?: number | null
+          duration_type: string
+          duration_value: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_kes: number
+          speed_limit_mbps?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          download_limit_mb?: number | null
+          duration_type?: string
+          duration_value?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_kes?: number
+          speed_limit_mbps?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone_number: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone_number?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone_number?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      routers: {
+        Row: {
+          api_port: number
+          created_at: string
+          id: string
+          ip_address: string
+          last_ping: string | null
+          location: string | null
+          name: string
+          status: string
+        }
+        Insert: {
+          api_port?: number
+          created_at?: string
+          id?: string
+          ip_address: string
+          last_ping?: string | null
+          location?: string | null
+          name: string
+          status?: string
+        }
+        Update: {
+          api_port?: number
+          created_at?: string
+          id?: string
+          ip_address?: string
+          last_ping?: string | null
+          location?: string | null
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount_kes: number
+          created_at: string
+          id: string
+          payment_method: string
+          plan_id: string | null
+          status: string
+          transaction_reference: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_kes: number
+          created_at?: string
+          id?: string
+          payment_method: string
+          plan_id?: string | null
+          status?: string
+          transaction_reference?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_kes?: number
+          created_at?: string
+          id?: string
+          payment_method?: string
+          plan_id?: string | null
+          status?: string
+          transaction_reference?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "internet_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          ip_address: string | null
+          mac_address: string | null
+          plan_id: string
+          router_id: string | null
+          start_time: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          ip_address?: string | null
+          mac_address?: string | null
+          plan_id: string
+          router_id?: string | null
+          start_time?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          ip_address?: string | null
+          mac_address?: string | null
+          plan_id?: string
+          router_id?: string | null
+          start_time?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "internet_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "routers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouchers: {
+        Row: {
+          activated_at: string | null
+          code: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          plan_id: string
+          status: string
+          used_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan_id: string
+          status?: string
+          used_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan_id?: string
+          status?: string
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vouchers_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "internet_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vouchers_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +429,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "customer"],
+    },
   },
 } as const
