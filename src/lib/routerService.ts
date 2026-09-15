@@ -1,0 +1,140 @@
+/**
+ * PalNet router integration layer (MikroTik REST API / RADIUS).
+ *
+ * Server-only helpers. Every function is safe to call from a server function
+ * handler or a server route handler. When a router has no reachable REST
+ * endpoint (typical in development), the calls are logged and reported as
+ * simulated so the billing flow still completes end to end.
+ */
+
+export type RouterTarget = {
+  id?: string;
+  name?: string;
+  ip_address: string;
+  api_port?: number | null;
+};
+
+export type RouterCommandResult = {
+  ok: boolean;
+  simulated: boolean;
+  message: string;
+};
+
+const REQUEST_TIMEOUT_MS = 4000;
+
+function routerBaseUrl(target: RouterTarget): string {
+  const port = target.api_port ?? 8728;
+  return `http://${target.ip_address}:${port}/rest`;
+}
+
+function authHeader(): Record<string, string> {
+  const user = process.env["ROUTER_API_USER"];
+  const pass = process.env["ROUTER_API_PASSWORD"];
+  if (!user || !pass) return {};
+  return { Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}` };
+}
+
+async function routerRequest(
+  target: RouterTarget,
+  path: string,
+  body: unknown,
+): Promise<RouterCommandResult> {
+  const url = `${routerBaseUrl(target)}${path}`;
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      return { ok: false, simulated: false, message: `Router responded ${response.status}` };
+    }
+    return { ok: true, simulated: false, message: "Router command applied" };
+  } catch (error) {
+    console.info("[routerService] simulated command", { url, body, error: String(error) });
+    return { ok: true, simulated: true, message: "Router unreachable — command simulated" };
+  }
+}
+
+/** Allow a device through the router firewall / hotspot for a given time budget. */
+export async function authorizeMAC(
+  macAddress: string,
+  durationMinutes: number,
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  return routerRequest(target, "/ip/hotspot/ip-binding/add", {
+    "mac-address": macAddress,
+    type: "bypassed",
+    comment: `palnet:${durationMinutes}m:${new Date().toISOString()}`,
+  });
+}
+
+/** Remove a device's access, e.g. when its subscription timer reaches zero. */
+export async function revokeMAC(
+  macAddress: string,
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  return routerRequest(target, "/ip/hotspot/ip-binding/remove", {
+    "mac-address": macAddress,
+  });
+}
+
+/** Lightweight reachability probe used by the admin Router Manager. */
+export async function pingRouter(target: RouterTarget): Promise<{ online: boolean }> {
+  try {
+    const response = await fetch(`${routerBaseUrl(target)}/system/resource`, {
+      headers: authHeader(),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    return { online: response.ok };
+  } catch {
+    return { online: false };
+  }
+}
+
+export type MpesaCallbackPayload = {
+  Body?: {
+    stkCallback?: {
+      ResultCode?: number;
+      CheckoutRequestID?: string;
+      MerchantRequestID?: string;
+      CallbackMetadata?: { Item?: Array<{ Name?: string; Value?: string | number }> };
+    };
+  };
+};
+
+/**
+ * Handle an M-Pesa STK confirmation: mark the transaction paid, create the
+ * subscription and authorize the device on its router immediately.
+ */
+export async function processMpesaCallback(payload: MpesaCallbackPayload) {
+  const callback = payload.Body?.stkCallback;
+  const reference = callback?.CheckoutRequestID ?? callback?.MerchantRequestID;
+  if (!reference) return { ok: false, message: "Missing checkout reference" };
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: tx } = await supabaseAdmin
+    .from("transactions")
+    .select("id, user_id, plan_id, status")
+    .eq("transaction_reference", reference)
+    .maybeSingle();
+
+  if (!tx) return { ok: false, message: "Unknown transaction reference" };
+
+  if ((callback?.ResultCode ?? 1) !== 0) {
+    await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id);
+    return { ok: true, message: "Payment failed and recorded" };
+  }
+
+  await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("id", tx.id);
+
+  const { activateSubscription } = await import("./palnet.server");
+  const result = await activateSubscription({
+    userId: tx.user_id as string,
+    planId: tx.plan_id as string,
+  });
+
+  return { ok: true, message: "Subscription activated", subscriptionId: result.subscriptionId };
+}
