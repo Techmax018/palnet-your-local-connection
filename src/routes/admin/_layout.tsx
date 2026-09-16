@@ -10,6 +10,7 @@ import {
   Activity,
   Bell,
   ChevronDown,
+  ChevronLeft,
   Circle,
   CreditCard,
   LayoutDashboard,
@@ -18,13 +19,14 @@ import {
   Package,
   Router,
   Search,
+  Settings,
   ShieldBan,
   Ticket,
   Users,
   X,
+  Wifi,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession, useIsAdmin } from "@/hooks/usePalNet";
@@ -33,99 +35,223 @@ export const Route = createFileRoute("/admin/_layout")({
   component: AdminLayout,
 });
 
-/* ── Only this email is allowed into the admin panel ── */
 const ADMIN_EMAIL = "maxnjuguna18@gmail.com";
 
 const NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/routers", label: "Routers", icon: Router },
-  { to: "/admin/plans", label: "Internet Plans", icon: Package },
-  { to: "/admin/vouchers", label: "Vouchers", icon: Ticket },
-  { to: "/admin/sessions", label: "Active Sessions", icon: Users },
-  { to: "/admin/transactions", label: "Transactions", icon: CreditCard },
-  { to: "/admin/anti-tethering", label: "Anti-Tethering", icon: ShieldBan },
+  {
+    to: "/admin",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    exact: true,
+    emoji: "📊",
+  },
+  {
+    to: "/admin/routers",
+    label: "Routers & APs",
+    icon: Router,
+    exact: false,
+    emoji: "📶",
+  },
+  {
+    to: "/admin/transactions",
+    label: "M-Pesa Transactions",
+    icon: CreditCard,
+    exact: false,
+    emoji: "💳",
+  },
+  {
+    to: "/admin/sessions",
+    label: "Active Sessions",
+    icon: Users,
+    exact: false,
+    emoji: "👥",
+  },
+  {
+    to: "/admin/vouchers",
+    label: "Voucher Generator",
+    icon: Ticket,
+    exact: false,
+    emoji: "🎟️",
+  },
+  {
+    to: "/admin/plans",
+    label: "Internet Plans",
+    icon: Package,
+    exact: false,
+    emoji: "📦",
+  },
+  {
+    to: "/admin/anti-tethering",
+    label: "Anti-Tethering",
+    icon: ShieldBan,
+    exact: false,
+    emoji: "🛡️",
+  },
+  {
+    to: "/admin/settings",
+    label: "Settings & Config",
+    icon: Settings,
+    exact: false,
+    emoji: "⚙️",
+  },
 ] as const;
 
-/* ─── Sidebar (lifted out so it never remounts) ──────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   SIDEBAR COMPONENT
+   Accepts `collapsed` prop so the parent controls width, but the internal
+   layout adapts: hide labels, show only icons when collapsed.
+───────────────────────────────────────────────────────────────────────────── */
 function Sidebar({
+  collapsed,
   mobile,
   onClose,
+  onToggleCollapse,
   displayName,
   email,
   onSignOut,
   pathname,
 }: {
+  collapsed: boolean;
   mobile?: boolean;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
   displayName: string;
   email: string;
   onSignOut: () => void;
   pathname: string;
 }) {
+  const initial = displayName.charAt(0).toUpperCase();
+
   return (
     <div
-      className="flex h-full w-full flex-col"
+      className="flex h-full flex-col overflow-hidden"
       style={{ background: "#0d1117" }}
     >
-      {/* ── Brand ── */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
+      {/* ── Brand + collapse toggle ───────────────────────────────────────── */}
+      <div
+        className={`flex h-16 shrink-0 items-center gap-3 border-b border-slate-800/80 ${
+          collapsed ? "justify-center px-3" : "px-5"
+        }`}
+      >
+        {/* Logo with cyan glow */}
         <div className="relative shrink-0">
-          <img
-            src="/favicon.png"
-            alt="PalNet"
-            className="h-9 w-9 rounded-xl object-cover ring-1 ring-cyan-500/40"
-          />
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl"
+            style={{
+              background: "linear-gradient(135deg, #0891b2, #06b6d4)",
+              boxShadow: "0 0 18px rgba(0,243,255,0.35)",
+            }}
+          >
+            <Wifi className="size-5 text-white" />
+          </div>
           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d1117] bg-emerald-400" />
         </div>
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-sm font-bold tracking-wide text-white">
-            PalNet
-          </p>
-          <p className="text-xs uppercase tracking-widest text-cyan-400/80">
-            Control Panel
-          </p>
-        </div>
-        {mobile && (
+
+        {/* Brand text — hidden when collapsed */}
+        {!collapsed && (
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-sm font-bold tracking-wide text-white">
+              PalNet
+            </p>
+            <p
+              className="text-xs uppercase tracking-widest"
+              style={{ color: "rgba(0,243,255,0.7)" }}
+            >
+              Control Panel
+            </p>
+          </div>
+        )}
+
+        {/* Close button (mobile) or collapse toggle (desktop) */}
+        {mobile ? (
           <button
             onClick={onClose}
-            className="ml-auto rounded-lg p-1 text-slate-500 transition-colors hover:text-white"
+            className="ml-auto rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-800 hover:text-white"
           >
             <X className="size-4" />
+          </button>
+        ) : (
+          <button
+            onClick={onToggleCollapse}
+            className={`rounded-lg p-1.5 text-slate-500 transition-all duration-200 hover:bg-slate-800 hover:text-cyan-400 ${
+              collapsed ? "mx-auto" : "ml-auto"
+            }`}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ChevronLeft
+              className={`size-4 transition-transform duration-300 ${
+                collapsed ? "rotate-180" : ""
+              }`}
+            />
           </button>
         )}
       </div>
 
-      {/* ── Nav ── */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <p className="mb-2 px-5 text-xs font-semibold uppercase tracking-widest text-slate-600">
-          Navigation
-        </p>
-        <nav className="space-y-0.5 px-2">
+      {/* ── Navigation ────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto py-4 scrollbar-hide">
+        {!collapsed && (
+          <p className="mb-2 px-5 text-xs font-semibold uppercase tracking-widest text-slate-600">
+            Navigation
+          </p>
+        )}
+
+        <nav className={`space-y-0.5 ${collapsed ? "px-1.5" : "px-2"}`}>
           {NAV.map(({ to, label, icon: Icon, exact }) => {
-            const isActive = exact
-              ? pathname === to
-              : pathname.startsWith(to) && to !== "/admin";
+            const isActive =
+              exact
+                ? pathname === to
+                : pathname.startsWith(to) && to !== "/admin";
+
             return (
               <Link
                 key={to}
                 to={to}
                 onClick={onClose}
-                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                title={collapsed ? label : undefined}
+                className={`group relative flex items-center gap-3 rounded-lg transition-all duration-150 ${
+                  collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
+                } ${
                   isActive
                     ? "admin-nav-active"
                     : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 }`}
               >
+                {/* Cyan left-border accent on active */}
+                {isActive && !collapsed && (
+                  <span
+                    className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full"
+                    style={{ background: "#00f3ff", boxShadow: "0 0 8px #00f3ff" }}
+                  />
+                )}
+
                 <Icon
-                  className={`size-4 shrink-0 transition-colors ${
+                  className={`shrink-0 transition-colors ${
+                    collapsed ? "size-5" : "size-4"
+                  } ${
                     isActive
                       ? "text-cyan-400"
                       : "text-slate-500 group-hover:text-slate-300"
                   }`}
+                  style={isActive ? { filter: "drop-shadow(0 0 6px #00f3ff)" } : undefined}
                 />
-                <span className="truncate">{label}</span>
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+
+                {!collapsed && (
+                  <>
+                    <span className="truncate text-sm font-medium">{label}</span>
+                    {isActive && (
+                      <span
+                        className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: "#00f3ff", boxShadow: "0 0 6px #00f3ff" }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {/* Tooltip on collapsed mode */}
+                {collapsed && (
+                  <span className="pointer-events-none absolute left-full ml-2 z-50 hidden whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-xl group-hover:block">
+                    {label}
+                  </span>
                 )}
               </Link>
             );
@@ -133,39 +259,76 @@ function Sidebar({
         </nav>
       </div>
 
-      {/* ── System status + user ── */}
-      <div className="shrink-0 space-y-2 border-t border-slate-800 p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-600">
-          System Status
-        </p>
-        <div className="flex items-center gap-2">
-          <Circle className="size-2 fill-emerald-400 text-emerald-400" />
-          <span className="text-xs text-slate-400">
-            API:{" "}
-            <span className="font-medium text-emerald-400">Online</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Circle className="size-2 fill-emerald-400 text-emerald-400" />
-          <span className="text-xs text-slate-400">
-            RouterOS:{" "}
-            <span className="font-medium text-emerald-400">Connected</span>
-          </span>
-        </div>
-
-        <div className="mt-3 flex items-center gap-2 border-t border-slate-800/60 pt-3">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400 ring-1 ring-cyan-500/30">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-white">
-              {displayName}
+      {/* ── System status + user footer ──────────────────────────────────── */}
+      <div
+        className={`shrink-0 border-t border-slate-800/80 ${
+          collapsed ? "px-2 py-3 space-y-3" : "p-4 space-y-2"
+        }`}
+      >
+        {!collapsed && (
+          <>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-600">
+              System Status
             </p>
-            <p className="truncate text-xs text-slate-500">{email}</p>
+            <div className="flex items-center gap-2">
+              <Circle className="size-2 fill-emerald-400 text-emerald-400" />
+              <span className="text-xs text-slate-400">
+                API:{" "}
+                <span className="font-semibold text-emerald-400">Online</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Circle className="size-2 fill-emerald-400 text-emerald-400" />
+              <span className="text-xs text-slate-400">
+                RouterOS:{" "}
+                <span className="font-semibold text-emerald-400">Connected</span>
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Collapsed: just the status dot */}
+        {collapsed && (
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              title="System Online"
+            >
+              <Circle className="size-2.5 fill-emerald-400 text-emerald-400" />
+            </div>
           </div>
+        )}
+
+        {/* User row */}
+        <div
+          className={`border-t border-slate-800/60 pt-3 ${
+            collapsed ? "flex flex-col items-center gap-2" : "flex items-center gap-2"
+          }`}
+        >
+          {/* Avatar */}
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+            style={{
+              background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+              boxShadow: "0 0 12px rgba(0,243,255,0.3)",
+            }}
+            title={email}
+          >
+            {initial}
+          </div>
+
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-white">
+                {displayName}
+              </p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
+            </div>
+          )}
+
           <button
             onClick={onSignOut}
-            className="rounded-lg p-1 text-slate-500 transition-colors hover:text-red-400"
+            className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
             title="Sign out"
           >
             <LogOut className="size-3.5" />
@@ -176,13 +339,17 @@ function Sidebar({
   );
 }
 
-/* ─── Main layout ─────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN LAYOUT
+───────────────────────────────────────────────────────────────────────────── */
 function AdminLayout() {
   const { user, loading } = useSession();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin(user?.id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -191,24 +358,18 @@ function AdminLayout() {
   /* ── Auth gate ── */
   useEffect(() => {
     if (loading || adminLoading) return;
-    if (!user) {
-      navigate({ to: "/admin/login", replace: true });
-      return;
-    }
-    // Hard-lock to the single authorised email
+    if (!user) { navigate({ to: "/admin/login", replace: true }); return; }
     if (user.email !== ADMIN_EMAIL) {
       supabase.auth.signOut();
       navigate({ to: "/admin/login", replace: true });
       return;
     }
-    if (isAdmin === false) {
-      navigate({ to: "/admin/login", replace: true });
-    }
+    if (isAdmin === false) navigate({ to: "/admin/login", replace: true });
   }, [user, isAdmin, loading, adminLoading, navigate]);
 
-  /* "/" key shortcut */
+  /* "/" shortcut */
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if (
         e.key === "/" &&
         document.activeElement?.tagName !== "INPUT" &&
@@ -217,7 +378,7 @@ function AdminLayout() {
         e.preventDefault();
         searchRef.current?.focus();
       }
-    }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -229,12 +390,20 @@ function AdminLayout() {
     navigate({ to: "/admin/login", replace: true });
   }
 
-  /* ── Loading state ── */
+  /* ── Loading ── */
   if (loading || adminLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center admin-bg">
         <div className="flex flex-col items-center gap-3">
-          <Activity className="size-8 animate-pulse text-cyan-400" />
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-2xl"
+            style={{
+              background: "linear-gradient(135deg, #0891b2, #06b6d4)",
+              boxShadow: "0 0 30px rgba(0,243,255,0.4)",
+            }}
+          >
+            <Wifi className="size-7 animate-pulse text-white" />
+          </div>
           <p className="text-sm uppercase tracking-widest text-slate-400">
             Authenticating…
           </p>
@@ -243,74 +412,95 @@ function AdminLayout() {
     );
   }
 
-  /* Render nothing while redirect is in flight */
   if (!user || user.email !== ADMIN_EMAIL || !isAdmin) return null;
 
-  const displayName =
-    (user.email?.split("@")[0] ?? "Admin")
-      .replace(/[^a-z0-9]/gi, " ")
-      .split(" ")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
+  const displayName = (user.email?.split("@")[0] ?? "Admin")
+    .replace(/[^a-z0-9]/gi, " ")
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
   const sidebarProps = {
     displayName,
     email: user.email ?? "",
     onSignOut: signOut,
     pathname,
+    collapsed,
   };
+
+  /* Sidebar width: 256px expanded, 64px collapsed */
+  const sidebarWidth = collapsed ? "w-16" : "w-64";
 
   return (
     <div className="flex h-screen overflow-hidden admin-bg">
-      {/* ── Desktop sidebar (always visible ≥ lg) ── */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 lg:flex">
-        <Sidebar {...sidebarProps} />
+
+      {/* ── Desktop sidebar ── */}
+      <aside
+        className={`hidden lg:flex shrink-0 flex-col border-r border-slate-800/80 transition-all duration-300 ease-in-out ${sidebarWidth}`}
+      >
+        <Sidebar
+          {...sidebarProps}
+          onToggleCollapse={() => setCollapsed((c) => !c)}
+        />
       </aside>
 
-      {/* ── Mobile sidebar overlay ── */}
-      {sidebarOpen && (
+      {/* ── Mobile drawer overlay ── */}
+      {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute bottom-0 left-0 top-0 w-72 border-r border-slate-800">
+          {/* Drawer — slides in from the left */}
+          <aside className="absolute bottom-0 left-0 top-0 w-72 border-r border-slate-800/80 shadow-2xl">
             <Sidebar
               {...sidebarProps}
+              collapsed={false}
               mobile
-              onClose={() => setSidebarOpen(false)}
+              onClose={() => setMobileOpen(false)}
             />
           </aside>
         </div>
       )}
 
-      {/* ── Main column ── */}
+      {/* ── Main content column ── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top header */}
+
+        {/* ── Top header bar ── */}
         <header
-          className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-4 lg:px-6"
+          className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-slate-800/80 px-4 lg:px-5"
           style={{
-            background: "rgba(13,17,23,0.95)",
-            backdropFilter: "blur(12px)",
+            background: "rgba(13,17,23,0.96)",
+            backdropFilter: "blur(14px)",
           }}
         >
-          {/* Hamburger — mobile only */}
+          {/* Mobile hamburger */}
           <button
             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white lg:hidden"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
           </button>
 
-          {/* Title */}
+          {/* Desktop collapse toggle (shown inside header as an alternative) */}
+          <button
+            className="hidden rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-800 hover:text-cyan-400 lg:flex"
+            onClick={() => setCollapsed((c) => !c)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Menu className="size-4" />
+          </button>
+
+          {/* Page title */}
           <p className="hidden text-sm font-semibold tracking-wide text-white sm:block">
             PalNet{" "}
-            <span className="text-slate-500">|</span>{" "}
-            <span className="text-cyan-400">Admin Control Panel</span>
+            <span className="text-slate-600">|</span>{" "}
+            <span style={{ color: "#00f3ff" }}>Admin Control Panel</span>
           </p>
 
           {/* Global search */}
-          <div className="mx-auto w-full max-w-xs lg:mx-0 lg:ml-6">
+          <div className="mx-auto w-full max-w-xs lg:mx-0 lg:ml-4 lg:max-w-sm">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
               <Input
@@ -320,60 +510,106 @@ function AdminLayout() {
                 placeholder="Search… (press /)"
                 className="admin-input h-8 w-full pl-9 text-xs"
               />
-              <kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 text-xs text-slate-500 sm:flex">
+              <kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center rounded border border-slate-700 bg-slate-800 px-1.5 text-xs text-slate-500 sm:flex">
                 /
               </kbd>
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* System online badge */}
+            <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 sm:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 pulse-live" />
+              <span className="text-xs font-medium text-emerald-400">
+                System Online
+              </span>
+            </div>
+
             {/* Notifications */}
             <button className="relative rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
               <Bell className="size-4" />
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-cyan-400" />
+              <span
+                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+                style={{ background: "#00f3ff", boxShadow: "0 0 4px #00f3ff" }}
+              />
             </button>
 
             {/* Profile dropdown */}
             <div className="relative">
               <button
                 onClick={() => setProfileOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-800"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400 ring-1 ring-cyan-500/30">
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{
+                    background: "linear-gradient(135deg,#0891b2,#06b6d4)",
+                    boxShadow: "0 0 10px rgba(0,243,255,0.3)",
+                  }}
+                >
                   {displayName.charAt(0)}
                 </div>
-                <span className="hidden text-xs font-medium text-white sm:block">
+                <span className="hidden text-xs font-semibold text-white sm:block">
                   {displayName}
                 </span>
                 <ChevronDown
-                  className={`size-3.5 transition-transform ${
+                  className={`size-3.5 text-slate-500 transition-transform duration-200 ${
                     profileOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-slate-700 bg-slate-900 p-1 shadow-xl">
-                  <p className="truncate px-3 py-1.5 text-xs text-slate-500">
-                    {user.email}
-                  </p>
-                  <div className="my-1 border-t border-slate-800" />
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      signOut();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-300 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    <LogOut className="size-3.5" /> Sign out
-                  </button>
-                </div>
+                <>
+                  {/* Click-away */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setProfileOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-700/80 bg-[#111827] shadow-2xl">
+                    {/* User info */}
+                    <div className="border-b border-slate-800 px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
+                          style={{ background: "linear-gradient(135deg,#0891b2,#06b6d4)" }}
+                        >
+                          {displayName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-white">
+                            {displayName}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            Administrator
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-1">
+                      <p className="px-3 pb-1 pt-2 text-xs text-slate-600 truncate">
+                        {user.email}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setProfileOpen(false);
+                          signOut();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-slate-300 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                      >
+                        <LogOut className="size-3.5" />
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
         </header>
 
-        {/* Page content */}
+        {/* ── Page content ── */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet context={{ globalSearch: searchValue }} />
         </main>

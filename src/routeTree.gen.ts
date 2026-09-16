@@ -21,6 +21,7 @@ import { Route as AdminLayoutVouchersRouteImport } from './routes/admin/vouchers
 import { Route as AdminLayoutSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminLayoutTransactionsRouteImport } from './routes/admin/transactions'
 import { Route as AdminLayoutAntiTetheringRouteImport } from './routes/admin/anti-tethering'
+import { Route as AdminLayoutSettingsRouteImport } from './routes/admin/settings'
 import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
 
 // Flat routes (no layout nesting)
@@ -105,6 +106,13 @@ const ApiPublicMpesaCallbackRoute = ApiPublicMpesaCallbackRouteImport.update({
 } as any)
 
 // Wire up the admin layout children
+const AdminLayoutSettingsRoute = AdminLayoutSettingsRouteImport.update({
+  id: '/admin/_layout/settings',
+  path: '/settings',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+
+// Wire up the admin layout children
 const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren([
   AdminLayoutIndexRoute,
   AdminLayoutRoutersRoute,
@@ -113,6 +121,7 @@ const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren([
   AdminLayoutSessionsRoute,
   AdminLayoutTransactionsRoute,
   AdminLayoutAntiTetheringRoute,
+  AdminLayoutSettingsRoute,
 ])
 
 export interface FileRoutesByFullPath {
@@ -128,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/admin/sessions': typeof AdminLayoutSessionsRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/settings': typeof AdminLayoutSettingsRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 
@@ -143,6 +153,7 @@ export interface FileRoutesByTo {
   '/admin/sessions': typeof AdminLayoutSessionsRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/settings': typeof AdminLayoutSettingsRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 
@@ -160,6 +171,7 @@ export interface FileRoutesById {
   '/admin/_layout/sessions': typeof AdminLayoutSessionsRoute
   '/admin/_layout/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/_layout/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/_layout/settings': typeof AdminLayoutSettingsRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 
@@ -178,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/transactions'
     | '/admin/anti-tethering'
+    | '/admin/settings'
     | '/api/public/mpesa/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -192,6 +205,7 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/transactions'
     | '/admin/anti-tethering'
+    | '/admin/settings'
     | '/api/public/mpesa/callback'
   id:
     | '__root__'
@@ -207,6 +221,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/sessions'
     | '/admin/_layout/transactions'
     | '/admin/_layout/anti-tethering'
+    | '/admin/_layout/settings'
     | '/api/public/mpesa/callback'
   fileRoutesById: FileRoutesById
 }
@@ -304,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/anti-tethering'
       fullPath: '/admin/anti-tethering'
       preLoaderRoute: typeof AdminLayoutAntiTetheringRouteImport
+      parentRoute: typeof AdminLayoutRouteImport
+    }
+    '/admin/_layout/settings': {
+      id: '/admin/_layout/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminLayoutSettingsRouteImport
       parentRoute: typeof AdminLayoutRouteImport
     }
     '/api/public/mpesa/callback': {

@@ -834,3 +834,20 @@ export const applyAntiTetheringToAllRouters = createServerFn({ method: "POST" })
       message: `${data.enable ? "Applied" : "Removed"} anti-tethering rules on ${applied}/${routers.length} router(s).`,
     };
   });
+
+/* ─── Admin: delete a plan ─── */
+
+export const deletePlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { error } = await context.supabase
+      .from("internet_plans")
+      .delete()
+      .eq("id", data.id);
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const, message: "Plan deleted" };
+  });

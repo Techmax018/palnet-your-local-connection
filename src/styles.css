@@ -285,3 +285,10 @@
   border: 1px solid rgba(255,255,255,0.08);
   color: white;
 }
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
