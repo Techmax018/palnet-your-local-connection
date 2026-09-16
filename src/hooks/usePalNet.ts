@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan } from "@/lib/palnet";
+import { lookupGuestSession } from "@/lib/palnet.functions";
+import type { GuestSession } from "@/lib/palnet.functions";
 
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
@@ -87,4 +90,96 @@ export function useMySession(userId: string | undefined) {
       return (data ?? null) as unknown as ActiveSession | null;
     },
   });
+}
+
+/**
+ * Reads MAC and IP from URL search params first (?mac=…&ip=…), then falls
+ * back to a browser-local device fingerprint stored in localStorage.
+ */
+export function getUrlDevice(): { mac: string | null; ip: string | null } {
+  if (typeof window === "undefined") return { mac: null, ip: null };
+  const params = new URLSearchParams(window.location.search);
+  return {
+    mac: params.get("mac"),
+    ip: params.get("ip"),
+  };
+}
+
+export function getDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  const key = "palnet_did";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(":");
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+/** Returns the best MAC address: URL param → localStorage fingerprint. */
+export function getDeviceMac(): string | null {
+  if (typeof window === "undefined") return null;
+  return getUrlDevice().mac ?? getDeviceId() ?? null;
+}
+
+/** Returns IP from URL param if present. */
+export function getDeviceIp(): string | null {
+  if (typeof window === "undefined") return null;
+  return getUrlDevice().ip ?? null;
+}
+
+export { type GuestSession };
+
+export function useGuestSession(enabled = true) {
+  const lookup = useServerFn(lookupGuestSession);
+  return useQuery({
+    queryKey: ["guest-session"],
+    enabled,
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<GuestSession | null> => {
+      const mac = getDeviceMac();
+      if (!mac) return null;
+      return lookup({ data: { macAddress: mac } });
+    },
+  });
+}
+
+export type NormalizedSession = GuestSession & { isGuest: boolean };
+
+/**
+ * Returns the best active session: logged-in user session takes precedence,
+ * then guest device lookup.
+ */
+export function useActiveSession(userId: string | undefined) {
+  const userSession = useMySession(userId);
+  const guestSession = useGuestSession(!userId);
+
+  if (userId) {
+    return {
+      data: userSession.data
+        ? ({
+            id: userSession.data.id,
+            end_time: userSession.data.end_time,
+            start_time: userSession.data.start_time,
+            mac_address: userSession.data.mac_address,
+            ip_address: userSession.data.ip_address,
+            status: userSession.data.status,
+            plan_name: userSession.data.internet_plans?.name ?? null,
+            plan_category: userSession.data.internet_plans?.category ?? null,
+            speed_limit_mbps: userSession.data.internet_plans?.speed_limit_mbps ?? null,
+            router_name: userSession.data.routers?.name ?? null,
+            device_label: null,
+            isGuest: false,
+          } satisfies NormalizedSession)
+        : null,
+      isLoading: userSession.isLoading,
+    };
+  }
+
+  return {
+    data: guestSession.data ? ({ ...guestSession.data, isGuest: true } satisfies NormalizedSession) : null,
+    isLoading: guestSession.isLoading,
+  };
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Smartphone, Ticket } from "lucide-react";
@@ -16,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatKes, planDurationLabel, type Plan } from "@/lib/palnet";
-import { payWithMpesa, redeemVoucher } from "@/lib/palnet.functions";
-import { useSession } from "@/hooks/usePalNet";
+import { startGuestPayment, redeemGuestVoucher } from "@/lib/palnet.functions";
+import { getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
 
 export function CheckoutDialog({
   plan,
@@ -28,25 +27,27 @@ export function CheckoutDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { user } = useSession();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const pay = useServerFn(payWithMpesa);
-  const redeem = useServerFn(redeemVoucher);
+  const pay = useServerFn(startGuestPayment);
+  const redeem = useServerFn(redeemGuestVoucher);
+
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handlePay() {
     if (!plan) return;
-    if (!user) {
-      onOpenChange(false);
-      navigate({ to: "/auth" });
-      return;
-    }
     setBusy(true);
     try {
-      const result = await pay({ data: { planId: plan.id, phone } });
+      const result = await pay({
+        data: {
+          planId: plan.id,
+          phone,
+          macAddress: getDeviceMac(),
+          ipAddress: getDeviceIp(),
+          deviceLabel: navigator?.userAgent?.slice(0, 60) ?? null,
+        },
+      });
       if (result.ok) {
         toast.success(result.message);
         await queryClient.invalidateQueries();
@@ -62,14 +63,17 @@ export function CheckoutDialog({
   }
 
   async function handleRedeem() {
-    if (!user) {
-      onOpenChange(false);
-      navigate({ to: "/auth" });
-      return;
-    }
     setBusy(true);
     try {
-      const result = await redeem({ data: { code } });
+      const result = await redeem({
+        data: {
+          code,
+          phone: phone || null,
+          macAddress: getDeviceMac(),
+          ipAddress: getDeviceIp(),
+          deviceLabel: navigator?.userAgent?.slice(0, 60) ?? null,
+        },
+      });
       if (result.ok) {
         toast.success(result.message);
         await queryClient.invalidateQueries();
@@ -86,66 +90,90 @@ export function CheckoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-display">
+          <DialogTitle className="font-display text-base">
             {plan ? plan.name : "PalNet Checkout"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             {plan
               ? `${formatKes(plan.price_kes)} · ${planDurationLabel(plan)} · up to ${plan.speed_limit_mbps} Mbps`
-              : "Pay with M-Pesa or redeem a scratch card."}
+              : "Pay with M-Pesa or redeem a scratch card — no account needed."}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="mpesa">
           <TabsList className="w-full">
-            <TabsTrigger value="mpesa" className="flex-1">
-              <Smartphone className="size-4" /> M-Pesa
+            <TabsTrigger value="mpesa" className="flex-1 gap-1.5 text-xs">
+              <Smartphone className="size-3.5" /> M-Pesa
             </TabsTrigger>
-            <TabsTrigger value="voucher" className="flex-1">
-              <Ticket className="size-4" /> Scratch card
+            <TabsTrigger value="voucher" className="flex-1 gap-1.5 text-xs">
+              <Ticket className="size-3.5" /> Scratch card
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="mpesa" className="space-y-3 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">M-Pesa phone number</Label>
+          <TabsContent value="mpesa" className="space-y-3 pt-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className="text-xs">
+                M-Pesa phone number
+              </Label>
               <Input
                 id="phone"
                 inputMode="tel"
-                placeholder="0712345678"
+                placeholder="0712 345 678"
                 value={phone}
                 maxLength={15}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              A payment request is sent to your phone. Enter your M-Pesa PIN to go online instantly.
+              A push notification is sent to your Safaricom line. Enter your M-Pesa PIN to go
+              online instantly. No account needed.
             </p>
-            <Button className="w-full font-display" disabled={busy || !plan} onClick={handlePay}>
+            <Button
+              className="w-full font-display text-sm"
+              disabled={busy || !plan || phone.trim().length < 9}
+              onClick={handlePay}
+            >
               {busy && <Loader2 className="animate-spin" />}
-              Send payment request
+              {plan ? `Pay ${formatKes(plan.price_kes)}` : "Send payment request"}
             </Button>
           </TabsContent>
 
-          <TabsContent value="voucher" className="space-y-3 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">Scratch card code</Label>
+          <TabsContent value="voucher" className="space-y-3 pt-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="code" className="text-xs">
+                Scratch card code
+              </Label>
               <Input
                 id="code"
                 placeholder="e.g. 4F9K2P"
                 value={code}
                 maxLength={20}
-                className="font-display tracking-[0.3em] uppercase"
-                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                className="h-9 font-display tracking-[0.3em] uppercase text-sm"
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="voucher-phone" className="text-xs">
+                Phone number (optional — for SMS receipt)
+              </Label>
+              <Input
+                id="voucher-phone"
+                inputMode="tel"
+                placeholder="0712 345 678"
+                value={phone}
+                maxLength={15}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Scratch off the card and enter the 6-character code printed on it.
+              Scratch off the silver strip and enter the 6-character code.
             </p>
             <Button
-              className="w-full font-display"
+              className="w-full font-display text-sm"
               variant="secondary"
               disabled={busy || code.trim().length < 4}
               onClick={handleRedeem}

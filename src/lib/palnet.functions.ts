@@ -387,6 +387,138 @@ export const generateVouchers = createServerFn({ method: "POST" })
     };
   });
 
+/* -------- Logged-in user convenience wrappers (kept for compatibility) ---- */
+
+/**
+ * Signed-in user M-Pesa payment. Delegates to startGuestPayment but attaches
+ * the authenticated user_id via the session.
+ */
+export const payWithMpesa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ planId: z.string().uuid(), phone: z.string().min(9).max(15) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const phone = normalizePhone(data.phone);
+    if (!phone) {
+      return { ok: false as const, message: "Enter a valid Safaricom number, e.g. 0712345678" };
+    }
+
+    const { data: plan } = await context.supabase
+      .from("internet_plans")
+      .select("id, name, price_kes, is_active")
+      .eq("id", data.planId)
+      .maybeSingle();
+    if (!plan || !plan.is_active) {
+      return { ok: false as const, message: "This package is not available right now" };
+    }
+
+    const reference = `PN${Date.now().toString(36).toUpperCase()}`;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: txError } = await supabaseAdmin.from("transactions").insert({
+      user_id: context.userId,
+      plan_id: plan.id,
+      amount_kes: plan.price_kes,
+      payment_method: "mpesa",
+      transaction_reference: reference,
+      status: "pending",
+      phone_number: phone,
+    });
+    if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
+
+    const { requestStkPush } = await import("./mpesa.server");
+    const push = await requestStkPush({
+      phone,
+      amount: Number(plan.price_kes),
+      reference,
+      description: plan.name,
+    });
+
+    if (!push.live) {
+      const { processMpesaCallback } = await import("./routerService");
+      const result = await processMpesaCallback({
+        Body: { stkCallback: { ResultCode: 0, CheckoutRequestID: reference } },
+      });
+      return {
+        ok: result.ok as true,
+        simulated: true as const,
+        reference,
+        message: result.ok
+          ? `Payment of KES ${plan.price_kes} confirmed — you are online.`
+          : "Payment could not be confirmed",
+      };
+    }
+
+    return {
+      ok: true as const,
+      simulated: false as const,
+      reference,
+      message: `Check ${data.phone} and enter your M-Pesa PIN to go online.`,
+    };
+  });
+
+/** Signed-in user scratch-card redemption. */
+export const redeemVoucher = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ code: z.string().trim().min(4).max(20) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const code = data.code.toUpperCase().replace(/\s/g, "");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: voucher } = await supabaseAdmin
+      .from("vouchers")
+      .select("id, plan_id, status")
+      .eq("code", code)
+      .maybeSingle();
+
+    if (!voucher) return { ok: false as const, message: "That voucher code was not found" };
+    if (voucher.status !== "unused") {
+      return { ok: false as const, message: "This voucher has already been used" };
+    }
+
+    const { activateSubscription } = await import("./palnet.server");
+    const activation = await activateSubscription({
+      userId: context.userId,
+      planId: voucher.plan_id as string,
+    });
+
+    await supabaseAdmin
+      .from("vouchers")
+      .update({ status: "active", activated_at: new Date().toISOString(), expires_at: activation.endTime })
+      .eq("id", voucher.id);
+
+    const { data: plan } = await supabaseAdmin
+      .from("internet_plans")
+      .select("name")
+      .eq("id", voucher.plan_id as string)
+      .maybeSingle();
+
+    return { ok: true as const, message: `${plan?.name ?? "Voucher"} activated — you are online.` };
+  });
+
+/** Signed-in user self-disconnect. */
+export const disconnectMySession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sub } = await supabaseAdmin
+      .from("user_subscriptions")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("status", "active")
+      .gt("end_time", new Date().toISOString())
+      .order("end_time", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!sub) return { ok: false as const, message: "No active session found" };
+    const { terminateSubscription } = await import("./palnet.server");
+    await terminateSubscription(sub.id as string);
+    return { ok: true as const, message: "You have been disconnected" };
+  });
+
 /** Admin: claim the admin role — allowed only while no admin exists yet. */
 export const claimFirstAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
