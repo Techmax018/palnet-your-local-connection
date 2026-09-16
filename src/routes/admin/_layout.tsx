@@ -35,8 +35,6 @@ export const Route = createFileRoute("/admin/_layout")({
   component: AdminLayout,
 });
 
-const ADMIN_EMAIL = "maxnjuguna18@gmail.com";
-
 const NAV = [
   {
     to: "/admin",
@@ -355,16 +353,11 @@ function AdminLayout() {
   const searchRef = useRef<HTMLInputElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  /* ── Auth gate ── */
+  /* ── Auth gate — role-only, no hardcoded email ── */
   useEffect(() => {
     if (loading || adminLoading) return;
     if (!user) { navigate({ to: "/admin/login", replace: true }); return; }
-    if (user.email !== ADMIN_EMAIL) {
-      supabase.auth.signOut();
-      navigate({ to: "/admin/login", replace: true });
-      return;
-    }
-    if (isAdmin === false) navigate({ to: "/admin/login", replace: true });
+    if (isAdmin === false) { navigate({ to: "/admin/login", replace: true }); }
   }, [user, isAdmin, loading, adminLoading, navigate]);
 
   /* "/" shortcut */
@@ -412,7 +405,7 @@ function AdminLayout() {
     );
   }
 
-  if (!user || user.email !== ADMIN_EMAIL || !isAdmin) return null;
+  if (!user || !isAdmin) return null;
 
   const displayName = (user.email?.split("@")[0] ?? "Admin")
     .replace(/[^a-z0-9]/gi, " ")

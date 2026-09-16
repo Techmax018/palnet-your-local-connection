@@ -851,3 +851,63 @@ export const deletePlan = createServerFn({ method: "POST" })
     if (error) return { ok: false as const, message: error.message };
     return { ok: true as const, message: "Plan deleted" };
   });
+
+/* ─── Poll payment status (client polls every 3s after STK push) ─── */
+
+export const pollPaymentStatus = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ reference: z.string().min(4).max(40) }).parse(data),
+  )
+  .handler(async ({ data }): Promise<{
+    status: "pending" | "completed" | "failed" | "expired";
+    subscriptionEndTime: string | null;
+    planName: string | null;
+    message: string;
+  }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: tx } = await supabaseAdmin
+      .from("transactions")
+      .select("id, status, plan_id, created_at, internet_plans(name)")
+      .eq("transaction_reference", data.reference)
+      .maybeSingle();
+
+    if (!tx) {
+      return { status: "expired", subscriptionEndTime: null, planName: null, message: "Transaction not found." };
+    }
+
+    // Expire pending transactions older than 5 minutes
+    const age = Date.now() - new Date(tx.created_at as string).getTime();
+    if (tx.status === "pending" && age > 5 * 60 * 1000) {
+      await supabaseAdmin
+        .from("transactions")
+        .update({ status: "failed" })
+        .eq("id", tx.id);
+      return { status: "expired", subscriptionEndTime: null, planName: (tx.internet_plans as any)?.name ?? null, message: "Payment request expired. Please try again." };
+    }
+
+    if (tx.status === "failed") {
+      return { status: "failed", subscriptionEndTime: null, planName: (tx.internet_plans as any)?.name ?? null, message: "Payment was cancelled or failed. Please try again." };
+    }
+
+    if (tx.status === "completed") {
+      // Find the active subscription created for this reference
+      const { data: sub } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("end_time")
+        .eq("status", "active")
+        .gt("end_time", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return {
+        status: "completed",
+        subscriptionEndTime: (sub?.end_time as string | null) ?? null,
+        planName: (tx.internet_plans as any)?.name ?? null,
+        message: "Payment confirmed — you are online!",
+      };
+    }
+
+    return { status: "pending", subscriptionEndTime: null, planName: (tx.internet_plans as any)?.name ?? null, message: "Waiting for M-Pesa confirmation…" };
+  });

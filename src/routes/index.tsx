@@ -438,7 +438,7 @@ function CaptivePortal() {
             <Cable className="size-3.5 text-accent shrink-0" />
             <span>
               <strong className="text-accent">Get Direct Home LAN/Cable Installed</strong>
-              {" — "}KES 3,000 (Includes Indoor Wi-Fi Router + Free Setup)
+              {" — "}KES 2,500 (Includes Indoor Wi-Fi Router + Free Setup)
             </span>
           </p>
           <Button

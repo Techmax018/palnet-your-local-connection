@@ -83,10 +83,10 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
         <CheckCircle2 className="size-10 text-success" />
         <p className="font-display text-base font-bold text-foreground">You are now online!</p>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Session transferred to this device successfully. Your existing time balance is active.
+          Session reconnected to this device successfully. Your existing time balance is active.
         </p>
         <Button size="sm" variant="outline" className="text-xs mt-2" onClick={() => { setDone(false); setSmsText(""); setExtractedCode(null); setDirectCode(""); }}>
-          <RefreshCw className="size-3.5" /> Transfer another session
+          <RefreshCw className="size-3.5" /> Reconnect another session
         </Button>
       </div>
     );
@@ -97,11 +97,11 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
       <div>
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <ArrowRightLeft className="size-4 text-accent" />
-          Reconnect / Switch Device
+          Reconnect Device
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Prove ownership of your session using your M-Pesa payment reference or PalNet scratch-card
-          code. Your remaining time will be transferred to this device instantly.
+          code. Your remaining time will be reconnected to this device instantly.
         </p>
       </div>
 
@@ -145,7 +145,7 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
                     onClick={() => handleTransfer(extractedCode)}
                   >
                     {busy ? <Loader2 className="animate-spin size-4" /> : <ArrowRightLeft className="size-3.5" />}
-                    Transfer Here
+                    Reconnect
                   </Button>
                 </div>
               ) : (
@@ -184,7 +184,7 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
             onClick={() => handleTransfer(directCode)}
           >
             {busy ? <Loader2 className="animate-spin size-4" /> : <ArrowRightLeft className="size-4" />}
-            Transfer Session to This Device
+            Reconnect to This Device
           </Button>
         </TabsContent>
       </Tabs>

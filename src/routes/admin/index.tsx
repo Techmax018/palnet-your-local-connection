@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Activity, ArrowUpRight, ArrowRightLeft, Check, Circle, ClipboardCopy,
   CreditCard, Loader2, Pencil, Plus, Printer, RefreshCw, Router,
-  Search, Ticket, TrendingUp, Tv, Users, WifiOff, Zap,
+  Search, Ticket, TrendingUp, Tv, Users, Wifi, WifiOff, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -451,8 +451,10 @@ function AdminDashboard() {
   const queryClient = useQueryClient();
   const pingFn = useServerFn(testRouterConnection);
   const kickFn = useServerFn(terminateSession);
+  const reconnectFn = useServerFn(transferSession);
   const [pingBusy, setPingBusy] = useState<string | null>(null);
   const [kickBusy, setKickBusy] = useState<string | null>(null);
+  const [connectBusy, setConnectBusy] = useState<string | null>(null);
   const [routerModal, setRouterModal] = useState<{ open: boolean; editing: RouterRow | null }>({ open: false, editing: null });
   const [sessionSearch, setSessionSearch] = useState("");
   const [txSearch, setTxSearch] = useState("");
@@ -479,6 +481,19 @@ function AdminDashboard() {
       await queryClient.invalidateQueries({ queryKey: ["admin-sessions-dash"] });
     } catch { toast.error("Failed to terminate"); }
     finally { setKickBusy(null); }
+  }
+
+  async function handleConnect(txRef: string | null) {
+    if (!txRef) { toast.error("No transaction reference for this payment."); return; }
+    setConnectBusy(txRef);
+    try {
+      const r = await reconnectFn({
+        data: { code: txRef, macAddress: null, ipAddress: null, userAgent: null, deviceLabel: null },
+      });
+      toast[r.ok ? "success" : "error"](r.message);
+      if (r.ok) await queryClient.invalidateQueries();
+    } catch { toast.error("Connect failed"); }
+    finally { setConnectBusy(null); }
   }
 
   return (
@@ -645,6 +660,7 @@ function AdminDashboard() {
                       <th className="px-3 py-2.5 text-right font-medium">KES</th>
                       <th className="px-3 py-2.5 text-left font-medium">Status</th>
                       <th className="px-3 py-2.5 text-left font-medium">Ref</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -663,6 +679,24 @@ function AdminDashboard() {
                         <td className="px-3 py-2.5"><TxStatusBadge status={tx.status} /></td>
                         <td className="px-3 py-2.5 max-w-[70px] truncate font-mono text-slate-600">
                           {tx.transaction_reference ?? "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex justify-end">
+                            {tx.status === "completed" && tx.transaction_reference && (
+                              <Button
+                                size="sm"
+                                className="h-6 gap-1 px-2 text-xs bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/25 hover:text-cyan-300"
+                                disabled={connectBusy === tx.transaction_reference}
+                                onClick={() => handleConnect(tx.transaction_reference)}
+                                title="Reconnect session using this payment reference"
+                              >
+                                {connectBusy === tx.transaction_reference
+                                  ? <Loader2 className="size-3 animate-spin" />
+                                  : <Wifi className="size-3" />}
+                                Connect
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

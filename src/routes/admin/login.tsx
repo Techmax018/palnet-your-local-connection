@@ -12,9 +12,6 @@ export const Route = createFileRoute("/admin/login")({
   component: AdminLogin,
 });
 
-/* Hard-lock: only this address may access the admin panel */
-const ALLOWED = "maxnjuguna18@gmail.com";
-
 function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -23,26 +20,27 @@ function AdminLogin() {
   const [denied, setDenied] = useState(false);
 
   async function signIn() {
-    /* Client-side gate — catches typos immediately without a round-trip */
-    if (email.trim().toLowerCase() !== ALLOWED) {
-      setDenied(true);
+    if (!email.trim() || !password) {
+      toast.error("Enter your email and password.");
       return;
     }
     setDenied(false);
     setBusy(true);
 
+    // 1. Authenticate with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
     });
-    setBusy(false);
 
     if (error) {
-      toast.error(error.message);
+      setBusy(false);
+      // Wrong credentials — show generic denied screen so we don't leak info
+      setDenied(true);
       return;
     }
 
-    /* Extra server-side guard: must also have the admin role row */
+    // 2. Check user_roles table — must have role = 'admin'
     const { data: role } = await supabase
       .from("user_roles")
       .select("role")
@@ -50,19 +48,23 @@ function AdminLogin() {
       .eq("role", "admin")
       .maybeSingle();
 
+    setBusy(false);
+
     if (!role) {
+      // Authenticated but not an admin — sign out immediately
       await supabase.auth.signOut();
-      toast.error("No admin role found. Contact system owner.");
+      setDenied(true);
       return;
     }
 
-    toast.success("Welcome, Max — PalNet Control Center");
+    // 3. Admin confirmed — redirect to dashboard
+    toast.success("Welcome to PalNet Control Center");
     navigate({ to: "/admin", replace: true });
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 admin-bg">
-      {/* Faint grid */}
+      {/* Faint grid overlay */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.03]"
         style={{
@@ -89,7 +91,7 @@ function AdminLogin() {
               PalNet Admin
             </h1>
             <p className="mt-1 text-xs uppercase tracking-widest text-cyan-400/80">
-              Control Center — Restricted
+              Control Center
             </p>
           </div>
         </div>
@@ -114,8 +116,9 @@ function AdminLogin() {
             <Input
               type="email"
               value={email}
+              autoComplete="username"
               onChange={(e) => { setEmail(e.target.value); setDenied(false); }}
-              placeholder="admin@palnet.local"
+              placeholder="admin@example.com"
               className="admin-input"
               onKeyDown={(e) => e.key === "Enter" && signIn()}
             />
@@ -126,18 +129,19 @@ function AdminLogin() {
             <Input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              onChange={(e) => { setPassword(e.target.value); setDenied(false); }}
               className="admin-input"
               onKeyDown={(e) => e.key === "Enter" && signIn()}
             />
           </div>
 
-          {/* Denied message */}
+          {/* Access denied */}
           {denied && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <ShieldOff className="size-3.5 shrink-0 text-red-400" />
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5">
+              <ShieldOff className="size-3.5 shrink-0 mt-0.5 text-red-400" />
               <p className="text-xs text-red-400">
-                That email is not authorised to access this panel.
+                Access denied. Check your credentials or contact the system owner to grant admin access in Supabase.
               </p>
             </div>
           )}
@@ -158,6 +162,10 @@ function AdminLogin() {
 
         <p className="text-center text-xs text-slate-600">
           PalNet ISP Management · Restricted Access
+          <br />
+          <span className="text-slate-700">
+            Admin access is granted via Supabase → user_roles table.
+          </span>
         </p>
       </div>
     </div>
