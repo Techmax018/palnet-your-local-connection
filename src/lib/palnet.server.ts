@@ -1,17 +1,21 @@
 import { planMinutes } from "./palnet";
 import { authorizeMAC, revokeMAC } from "./routerService";
 
-/**
- * Creates (or extends) an active subscription for a user + plan and pushes the
- * firewall authorization to the assigned router.
- */
-export async function activateSubscription(input: {
-  userId: string;
-  planId: string;
+export type ActivationIdentity = {
+  userId?: string | null;
+  phone?: string | null;
   macAddress?: string | null;
   ipAddress?: string | null;
+  deviceLabel?: string | null;
   routerId?: string | null;
-}) {
+};
+
+/**
+ * Creates (or extends) an active subscription for a signed-in user OR a guest
+ * device (identified by MAC address / phone number) and pushes the firewall
+ * authorization to the assigned router.
+ */
+export async function activateSubscription(input: ActivationIdentity & { planId: string }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: plan, error: planError } = await supabaseAdmin
@@ -36,15 +40,24 @@ export async function activateSubscription(input: {
     routerId = router.id;
   }
 
-  // Extend an existing active session for the same category instead of stacking.
-  const { data: existing } = await supabaseAdmin
+  const mac = input.macAddress ?? generateMac(input.userId ?? input.phone ?? String(Date.now()));
+  const ip = input.ipAddress ?? generateIp();
+
+  // Extend an existing active session for the same identity instead of stacking.
+  let query = supabaseAdmin
     .from("user_subscriptions")
     .select("id, end_time")
-    .eq("user_id", input.userId)
     .eq("status", "active")
     .gt("end_time", new Date().toISOString())
     .order("end_time", { ascending: false })
-    .maybeSingle();
+    .limit(1);
+
+  if (input.userId) query = query.eq("user_id", input.userId);
+  else if (input.macAddress) query = query.eq("mac_address", input.macAddress);
+  else if (input.phone) query = query.eq("phone_number", input.phone);
+
+  const { data: matches } = await query;
+  const existing = matches?.[0] ?? null;
 
   const base = existing ? new Date(existing.end_time as string) : new Date();
   const endTime = new Date(base.getTime() + minutes * 60_000).toISOString();
@@ -60,11 +73,13 @@ export async function activateSubscription(input: {
     const { data: created, error } = await supabaseAdmin
       .from("user_subscriptions")
       .insert({
-        user_id: input.userId,
+        user_id: input.userId ?? null,
         plan_id: input.planId,
         router_id: routerId,
-        mac_address: input.macAddress ?? generateMac(input.userId),
-        ip_address: input.ipAddress ?? generateIp(),
+        mac_address: mac,
+        ip_address: ip,
+        phone_number: input.phone ?? null,
+        device_label: input.deviceLabel ?? null,
         end_time: endTime,
         status: "active",
       })
