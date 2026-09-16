@@ -21,7 +21,7 @@ const STEPS = [
   {
     icon: Globe,
     title: "Go to the TV Packages tab",
-    body: "On this page, tap the "TV" tab at the top. You will see all available Smart TV & streaming packages.",
+    body: 'On this page, tap the "TV" tab at the top. You will see all available Smart TV & streaming packages.',
   },
   {
     icon: CreditCard,
