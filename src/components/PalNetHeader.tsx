@@ -27,20 +27,21 @@ export function PalNetHeader({ online = true }: { online?: boolean }) {
           <img
             src="/favicon.png"
             alt="PalNet logo"
-            className="size-10 rounded-xl border border-border object-cover glow-neon"
+            className="size-10 rounded-xl border border-border object-contain glow-neon"
           />
           <span className="leading-tight">
             <span className="block font-display text-lg font-bold text-gradient-brand">PalNet Wi-Fi</span>
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
-                className={`inline-block size-2 rounded-full ${online ? "bg-success pulse-live" : "bg-destructive"}`}
+                className={`inline-block size-2 shrink-0 rounded-full ${online ? "bg-success pulse-live" : "bg-destructive"}`}
               />
-              {online ? "Network connected" : "Network unreachable"}
+              {online ? "Reliable Wifi Billing & Connectivity" : "Network unreachable"}
             </span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        {/* Right-side actions — wrap on mobile so Sign In appears below */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {isAdmin && (
             <Button asChild variant="outline" size="sm">
               <Link to="/admin">

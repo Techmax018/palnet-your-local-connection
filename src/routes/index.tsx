@@ -68,7 +68,7 @@ function InstallModal({ open, onClose, homePlans }: {
         <DialogHeader>
           <DialogTitle className="font-display text-sm">Request Home Installation</DialogTitle>
           <DialogDescription className="text-xs">
-            LAN cable + indoor Wi-Fi router + free setup — KES 3,000 one-time fee.
+            LAN cable + indoor Wi-Fi router + free setup — KES 2,500 one-time fee.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-1">
@@ -81,8 +81,8 @@ function InstallModal({ open, onClose, homePlans }: {
             <Input inputMode="tel" value={form.phoneNumber} onChange={(e) => setForm(f => ({ ...f, phoneNumber: e.target.value }))} className="h-9 text-sm" placeholder="0712 345 678" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">House / Apartment Number *</Label>
-            <Input value={form.houseNumber} onChange={(e) => setForm(f => ({ ...f, houseNumber: e.target.value }))} className="h-9 text-sm" placeholder="Block C, House 14" />
+            <Label className="text-xs">Location / Area *</Label>
+            <Input value={form.houseNumber} onChange={(e) => setForm(f => ({ ...f, houseNumber: e.target.value }))} className="h-9 text-sm" placeholder="e.g. Kasarani, Block C House 14" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Preferred Plan (optional)</Label>

@@ -127,26 +127,36 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
             />
           </div>
 
-          {/* Extraction result */}
+          {/* Extraction result + Connect button */}
           {smsText && (
             <div className={`rounded-lg border p-3 ${extractedCode ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
               {extractedCode ? (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">M-Pesa code extracted</p>
-                    <p className="font-display text-lg font-black tracking-[0.25em] text-foreground mt-0.5">
-                      {extractedCode}
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">M-Pesa code extracted</p>
+                      <p className="font-display text-lg font-black tracking-[0.25em] text-foreground mt-0.5">
+                        {extractedCode}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success ring-1 ring-success/20">
+                      Found
+                    </span>
                   </div>
+                  {/* Connect button — verifies code in DB then reconnects */}
                   <Button
-                    className="font-display text-xs shrink-0"
-                    size="sm"
+                    className="w-full font-display text-sm gap-2"
                     disabled={busy}
                     onClick={() => handleTransfer(extractedCode)}
                   >
-                    {busy ? <Loader2 className="animate-spin size-4" /> : <ArrowRightLeft className="size-3.5" />}
-                    Reconnect
+                    {busy
+                      ? <Loader2 className="animate-spin size-4" />
+                      : <ArrowRightLeft className="size-4" />}
+                    {busy ? "Verifying with PalNet…" : "Connect This Device"}
                   </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Verifying <span className="font-display text-foreground">{extractedCode}</span> against PalNet payment records…
+                  </p>
                 </div>
               ) : (
                 <p className="text-xs text-destructive">
@@ -156,11 +166,13 @@ export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground">
-            The code is automatically extracted using the pattern{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-accent">[A-Z0-9]&#123;10&#125;</code>{" "}
-            — nothing is sent to any third party.
-          </p>
+          {!smsText && (
+            <p className="text-xs text-muted-foreground">
+              The code is automatically extracted using the pattern{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-accent">[A-Z0-9]&#123;10&#125;</code>{" "}
+              — nothing is sent to any third party.
+            </p>
+          )}
         </TabsContent>
 
         {/* ── Option B: direct code ── */}
