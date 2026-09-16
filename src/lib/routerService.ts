@@ -117,7 +117,7 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id, user_id, plan_id, status")
+    .select("id, user_id, plan_id, status, phone_number, mac_address, ip_address, device_label")
     .eq("transaction_reference", reference)
     .maybeSingle();
 
@@ -132,8 +132,12 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   const { activateSubscription } = await import("./palnet.server");
   const result = await activateSubscription({
-    userId: tx.user_id as string,
+    userId: (tx.user_id as string | null) ?? null,
     planId: tx.plan_id as string,
+    phone: (tx.phone_number as string | null) ?? null,
+    macAddress: (tx.mac_address as string | null) ?? null,
+    ipAddress: (tx.ip_address as string | null) ?? null,
+    deviceLabel: (tx.device_label as string | null) ?? null,
   });
 
   return { ok: true, message: "Subscription activated", subscriptionId: result.subscriptionId };
