@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin, useSession } from "@/hooks/usePalNet";
-import logo from "@/assets/palnet-logo.jpg.asset.json";
+
 
 export function PalNetHeader({ online = true }: { online?: boolean }) {
   const { user } = useSession();
@@ -25,7 +25,7 @@ export function PalNetHeader({ online = true }: { online?: boolean }) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-3">
           <img
-            src={logo.url}
+            src="/favicon.png"
             alt="PalNet logo"
             className="size-10 rounded-xl border border-border object-cover glow-neon"
           />

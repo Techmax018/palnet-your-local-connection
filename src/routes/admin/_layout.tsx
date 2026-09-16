@@ -8,7 +8,6 @@ import {
   Users,
   CreditCard,
   LogOut,
-  Wifi,
   Menu,
   X,
 } from "lucide-react";
@@ -98,9 +97,7 @@ function AdminLayout() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-56 flex-col border-r border-border/70 bg-sidebar px-3 py-4">
         <div className="flex items-center gap-2 px-1 mb-6">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 border border-primary/30">
-            <Wifi className="size-4 text-primary" />
-          </div>
+          <img src="/favicon.png" alt="PalNet" className="h-7 w-7 rounded-lg object-cover border border-border/70" />
           <span className="font-display text-sm font-bold text-gradient-brand">PalNet Admin</span>
         </div>
         <NavItems />
@@ -119,9 +116,7 @@ function AdminLayout() {
           <aside className="absolute left-0 top-0 bottom-0 w-56 flex flex-col border-r border-border/70 bg-sidebar px-3 py-4">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2 px-1">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 border border-primary/30">
-                  <Wifi className="size-4 text-primary" />
-                </div>
+                <img src="/favicon.png" alt="PalNet" className="h-7 w-7 rounded-lg object-cover border border-border/70" />
                 <span className="font-display text-sm font-bold text-gradient-brand">PalNet Admin</span>
               </div>
               <Button variant="ghost" size="icon" className="size-7" onClick={() => setSidebarOpen(false)}>
@@ -146,6 +141,7 @@ function AdminLayout() {
           <Button variant="ghost" size="icon" className="size-8" onClick={() => setSidebarOpen(true)}>
             <Menu className="size-4" />
           </Button>
+          <img src="/favicon.png" alt="PalNet" className="h-5 w-5 rounded object-cover border border-border/70" />
           <span className="font-display text-sm font-bold text-gradient-brand">PalNet Admin</span>
         </header>
 
