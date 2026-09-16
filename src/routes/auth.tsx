@@ -1,24 +1,19 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Activity, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/usePalNet";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in to PalNet — Wi-Fi, Home Internet & TV" },
-      {
-        name: "description",
-        content:
-          "Sign in or create a PalNet account to buy hotspot passes and manage your sessions.",
-      },
+      { title: "Sign in to PalNet" },
+      { name: "description", content: "Sign in to PalNet Wi-Fi billing portal." },
     ],
   }),
   component: AuthPage,
@@ -30,138 +25,118 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
 
+  // If already signed in, redirect to the right place
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/", replace: true });
-  }, [user, loading, navigate]);
+    if (loading || !user) return;
+    redirectAfterLogin(user.id);
+  }, [user, loading]);
 
-  async function signIn() {
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Welcome back to PalNet");
-    navigate({ to: "/", replace: true });
+  async function redirectAfterLogin(userId: string) {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    navigate({ to: data ? "/admin" : "/", replace: true });
   }
 
-  async function signUp() {
+  async function signIn() {
+    if (!email.trim() || !password) {
+      toast.error("Enter your email and password.");
+      return;
+    }
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
       password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: fullName, phone_number: phone },
-      },
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error("Invalid email or password. Please try again.");
       return;
     }
-    if (!data.session) {
-      toast.success("Account created — check your email to confirm it, then sign in.");
-      return;
-    }
-    navigate({ to: "/", replace: true });
+    toast.success("Welcome to PalNet!");
+    await redirectAfterLogin(data.user.id);
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="surface-panel w-full max-w-md gap-0 p-6 glow-primary">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 py-10"
+      style={{
+        background: "#0b0f19",
+        backgroundImage:
+          "radial-gradient(600px circle at 30% 20%, rgba(0,243,255,0.04), transparent 55%)",
+      }}
+    >
+      <Card className="surface-panel w-full max-w-sm gap-0 p-6 glow-primary">
         {/* Logo */}
-        <div className="flex flex-col items-center text-center">
+        <div className="flex flex-col items-center text-center mb-6">
           <div
             className="flex h-20 w-20 items-center justify-center rounded-2xl overflow-hidden"
             style={{
               background: "linear-gradient(135deg, #0b1622, #0d1f2d)",
-              boxShadow: "0 0 0 2px rgba(0,243,255,0.2), 0 0 30px rgba(0,243,255,0.15)",
+              boxShadow: "0 0 0 2px rgba(0,243,255,0.25), 0 0 40px rgba(0,243,255,0.2)",
             }}
           >
             <img src="/favicon.png" alt="PalNet logo" className="h-14 w-14 object-contain" />
           </div>
           <h1 className="mt-3 font-display text-2xl font-black text-gradient-brand">PalNet</h1>
-          <p className="text-sm text-muted-foreground">Local Wi-Fi, Home ISP & TV billing portal</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Reliable Wi-Fi Billing & Connectivity
+          </p>
         </div>
 
-        <Tabs defaultValue="signin" className="mt-6">
-          <TabsList className="w-full">
-            <TabsTrigger value="signin" className="flex-1">Sign in</TabsTrigger>
-            <TabsTrigger value="signup" className="flex-1">Create account</TabsTrigger>
-          </TabsList>
+        {/* Sign-in form */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Lock className="size-3.5 text-muted-foreground" />
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              Sign in to your account
+            </p>
+          </div>
 
-          {/* Sign in */}
-          <TabsContent value="signin" className="space-y-3 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                onKeyDown={(e) => e.key === "Enter" && signIn()}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && signIn()}
-              />
-            </div>
-            <Button className="w-full font-display" disabled={busy} onClick={signIn}>
-              {busy && <Loader2 className="animate-spin" />} Sign in
-            </Button>
-          </TabsContent>
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-xs">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              autoComplete="username"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="h-9 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && signIn()}
+            />
+          </div>
 
-          {/* Create account */}
-          <TabsContent value="signup" className="space-y-3 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
-              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-phone">Phone number</Label>
-              <Input
-                id="signup-phone"
-                inputMode="tel"
-                placeholder="0712345678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
-              <Input
-                id="signup-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
-              <Input
-                id="signup-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button className="w-full font-display" disabled={busy} onClick={signUp}>
-              {busy && <Loader2 className="animate-spin" />} Create account
-            </Button>
-          </TabsContent>
-        </Tabs>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-xs">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              autoComplete="current-password"
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-9 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && signIn()}
+            />
+          </div>
+
+          <Button
+            className="w-full font-display text-sm"
+            disabled={busy}
+            onClick={signIn}
+          >
+            {busy ? <Loader2 className="animate-spin size-4" /> : <Activity className="size-4" />}
+            Sign in
+          </Button>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Admin accounts are managed by the system owner.
+        </p>
       </Card>
     </div>
   );
