@@ -394,17 +394,22 @@ function CaptivePortal() {
     },
   });
 
-  // Anti-tethering: read the global setting
+  // Anti-tethering: read the global setting — table may not exist yet, default false
   const { data: antiTetheringEnabled } = useQuery({
     queryKey: ["anti-tethering-setting"],
     refetchInterval: 300_000,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("network_settings")
-        .select("value")
-        .eq("key", "anti_tethering_enabled")
-        .maybeSingle();
-      return data?.value === "true";
+      try {
+        const { data, error } = await supabase
+          .from("network_settings")
+          .select("value")
+          .eq("key", "anti_tethering_enabled")
+          .maybeSingle();
+        if (error) return false;
+        return data?.value === "true";
+      } catch {
+        return false;
+      }
     },
   });
 
