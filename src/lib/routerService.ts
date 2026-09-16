@@ -142,3 +142,97 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   return { ok: true, message: "Subscription activated", subscriptionId: result.subscriptionId };
 }
+
+/** Authorize a device by IP address (for TV / static-IP plans). */
+export async function authorizeIP(
+  ipAddress: string,
+  durationMinutes: number,
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  return routerRequest(target, "/ip/firewall/address-list/add", {
+    list: "palnet-authorized",
+    address: ipAddress,
+    comment: `palnet:${durationMinutes}m:${new Date().toISOString()}`,
+    timeout: `${Math.floor(durationMinutes / 60)}:${String(durationMinutes % 60).padStart(2, "0")}:00`,
+  });
+}
+
+/** Remove IP authorization (TV / static-IP plans). */
+export async function revokeIP(
+  ipAddress: string,
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  return routerRequest(target, "/ip/firewall/address-list/remove", {
+    list: "palnet-authorized",
+    address: ipAddress,
+  });
+}
+
+/**
+ * Transfer an active session from one device to another on the router.
+ * Revokes the old MAC/IP and immediately authorizes the new one.
+ */
+export async function transferDevice(opts: {
+  oldMac: string | null;
+  oldIp: string | null;
+  newMac: string | null;
+  newIp: string | null;
+  remainingMinutes: number;
+  target: RouterTarget;
+}): Promise<RouterCommandResult> {
+  const { oldMac, oldIp, newMac, newIp, remainingMinutes, target } = opts;
+
+  // Revoke old device
+  if (oldMac) await revokeMAC(oldMac, target).catch(() => null);
+  if (oldIp) await revokeIP(oldIp, target).catch(() => null);
+
+  // Authorize new device
+  let result: RouterCommandResult = { ok: true, simulated: true, message: "No new device provided" };
+  if (newMac) result = await authorizeMAC(newMac, remainingMinutes, target);
+  else if (newIp) result = await authorizeIP(newIp, remainingMinutes, target);
+
+  return result;
+}
+
+/**
+ * Apply MikroTik Mangle rules that enforce TTL=1 on the hotspot bridge
+ * to prevent client tethering/hotspot sharing.
+ */
+export async function applyAntiTetheringRules(
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  // Set TTL = 1 on postrouting for the hotspot bridge so tethered devices drop immediately
+  const rule1 = await routerRequest(target, "/ip/firewall/mangle/add", {
+    action: "change-ttl",
+    chain: "postrouting",
+    "new-ttl": "set:1",
+    "out-interface": "Hotspot-Bridge",
+    comment: "Block PalNet Tethering",
+    passthrough: "yes",
+  });
+  if (!rule1.ok && !rule1.simulated) return rule1;
+
+  // Block common tethering detection bypass ports (Android hotspot uses 5353/mDNS)
+  const rule2 = await routerRequest(target, "/ip/firewall/mangle/add", {
+    action: "mark-packet",
+    chain: "prerouting",
+    protocol: "udp",
+    "dst-port": "5353",
+    "new-packet-mark": "palnet-tethered",
+    passthrough: "no",
+    comment: "Flag PalNet tethering mDNS",
+  });
+
+  return rule2.simulated
+    ? { ok: true, simulated: true, message: "Anti-tethering rules simulated (router unreachable)" }
+    : { ok: true, simulated: false, message: "Anti-tethering rules applied to router" };
+}
+
+/** Remove all PalNet anti-tethering mangle rules from the router. */
+export async function removeAntiTetheringRules(
+  target: RouterTarget,
+): Promise<RouterCommandResult> {
+  return routerRequest(target, "/ip/firewall/mangle/remove", {
+    "?comment": "Block PalNet Tethering",
+  });
+}

@@ -4,11 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Smartphone, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -20,10 +16,12 @@ import { getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
 
 export function CheckoutDialog({
   plan,
+  accountId,
   open,
   onOpenChange,
 }: {
   plan: Plan | null;
+  accountId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -35,6 +33,11 @@ export function CheckoutDialog({
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // For home plans the accountId arrives pre-filled; for hotspot/TV it's empty
+  const deviceLabel = accountId
+    ? `AccountID:${accountId}`.slice(0, 60)
+    : (navigator?.userAgent?.slice(0, 60) ?? null);
+
   async function handlePay() {
     if (!plan) return;
     setBusy(true);
@@ -45,21 +48,13 @@ export function CheckoutDialog({
           phone,
           macAddress: getDeviceMac(),
           ipAddress: getDeviceIp(),
-          deviceLabel: navigator?.userAgent?.slice(0, 60) ?? null,
+          deviceLabel,
         },
       });
-      if (result.ok) {
-        toast.success(result.message);
-        await queryClient.invalidateQueries();
-        onOpenChange(false);
-      } else {
-        toast.error(result.message);
-      }
-    } catch {
-      toast.error("Payment could not be started. Please try again.");
-    } finally {
-      setBusy(false);
-    }
+      toast[result.ok ? "success" : "error"](result.message);
+      if (result.ok) { await queryClient.invalidateQueries(); onOpenChange(false); }
+    } catch { toast.error("Payment could not be started. Please try again."); }
+    finally { setBusy(false); }
   }
 
   async function handleRedeem() {
@@ -71,21 +66,13 @@ export function CheckoutDialog({
           phone: phone || null,
           macAddress: getDeviceMac(),
           ipAddress: getDeviceIp(),
-          deviceLabel: navigator?.userAgent?.slice(0, 60) ?? null,
+          deviceLabel,
         },
       });
-      if (result.ok) {
-        toast.success(result.message);
-        await queryClient.invalidateQueries();
-        onOpenChange(false);
-      } else {
-        toast.error(result.message);
-      }
-    } catch {
-      toast.error("Could not redeem that code. Please try again.");
-    } finally {
-      setBusy(false);
-    }
+      toast[result.ok ? "success" : "error"](result.message);
+      if (result.ok) { await queryClient.invalidateQueries(); onOpenChange(false); }
+    } catch { toast.error("Could not redeem that code. Please try again."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -99,6 +86,9 @@ export function CheckoutDialog({
             {plan
               ? `${formatKes(plan.price_kes)} · ${planDurationLabel(plan)} · up to ${plan.speed_limit_mbps} Mbps`
               : "Pay with M-Pesa or redeem a scratch card — no account needed."}
+            {accountId && (
+              <span className="ml-1 text-accent">· Account: {accountId}</span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -114,11 +104,9 @@ export function CheckoutDialog({
 
           <TabsContent value="mpesa" className="space-y-3 pt-3">
             <div className="space-y-1.5">
-              <Label htmlFor="phone" className="text-xs">
-                M-Pesa phone number
-              </Label>
+              <Label htmlFor="pay-phone" className="text-xs">M-Pesa phone number</Label>
               <Input
-                id="phone"
+                id="pay-phone"
                 inputMode="tel"
                 placeholder="0712 345 678"
                 value={phone}
@@ -129,25 +117,23 @@ export function CheckoutDialog({
             </div>
             <p className="text-xs text-muted-foreground">
               A push notification is sent to your Safaricom line. Enter your M-Pesa PIN to go
-              online instantly. No account needed.
+              online instantly — no account needed.
             </p>
             <Button
               className="w-full font-display text-sm"
               disabled={busy || !plan || phone.trim().length < 9}
               onClick={handlePay}
             >
-              {busy && <Loader2 className="animate-spin" />}
+              {busy && <Loader2 className="animate-spin size-4" />}
               {plan ? `Pay ${formatKes(plan.price_kes)}` : "Send payment request"}
             </Button>
           </TabsContent>
 
           <TabsContent value="voucher" className="space-y-3 pt-3">
             <div className="space-y-1.5">
-              <Label htmlFor="code" className="text-xs">
-                Scratch card code
-              </Label>
+              <Label htmlFor="voucher-code" className="text-xs">Scratch card code</Label>
               <Input
-                id="code"
+                id="voucher-code"
                 placeholder="e.g. 4F9K2P"
                 value={code}
                 maxLength={20}
@@ -178,7 +164,7 @@ export function CheckoutDialog({
               disabled={busy || code.trim().length < 4}
               onClick={handleRedeem}
             >
-              {busy && <Loader2 className="animate-spin" />}
+              {busy && <Loader2 className="animate-spin size-4" />}
               Redeem code
             </Button>
           </TabsContent>

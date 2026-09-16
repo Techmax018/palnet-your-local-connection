@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Circle,
   Activity,
+  ShieldBan,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const NAV = [
   { to: "/admin/vouchers", label: "Vouchers", icon: Ticket },
   { to: "/admin/sessions", label: "Active Sessions", icon: Users },
   { to: "/admin/transactions", label: "Transactions", icon: CreditCard },
+  { to: "/admin/anti-tethering", label: "Anti-Tethering", icon: ShieldBan },
 ];
 
 function AdminLayout() {

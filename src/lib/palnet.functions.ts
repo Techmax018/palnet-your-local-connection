@@ -534,3 +534,303 @@ export const claimFirstAdmin = createServerFn({ method: "POST" })
     await supabaseAdmin.from("profiles").update({ role: "admin" }).eq("id", context.userId);
     return { ok: true as const, message: "You are now the PalNet administrator" };
   });
+
+/* ─── Installation request (guest, no auth required) ─── */
+
+export const submitInstallationRequest = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        fullName: z.string().trim().min(2).max(80),
+        phoneNumber: z.string().min(9).max(15),
+        houseNumber: z.string().trim().min(1).max(60),
+        preferredPlanId: z.string().uuid().optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const phone = normalizePhone(data.phoneNumber) ?? data.phoneNumber;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("installation_requests").insert({
+      full_name: data.fullName,
+      phone_number: phone,
+      house_number: data.houseNumber,
+      preferred_plan_id: data.preferredPlanId ?? null,
+      status: "pending",
+    });
+    if (error) return { ok: false as const, message: "Could not submit request. Please try again." };
+    return { ok: true as const, message: "Request received! Our team will contact you shortly." };
+  });
+
+/* ─── Session transfer / reconnect (no auth — proven by holding the code) ─── */
+
+/**
+ * Reconnect / Transfer: the caller proves ownership of a session by presenting
+ * the original M-Pesa transaction reference or PalNet voucher code, then binds
+ * the session to their current device (MAC / IP).
+ *
+ * Server-side steps:
+ *  1. Resolve the code → active subscription
+ *  2. Verify time has not expired
+ *  3. Save old MAC as previous_mac_address
+ *  4. Update subscription with new MAC / IP / user-agent
+ *  5. Trigger router: revoke old device, authorize new device
+ */
+export const transferSession = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        code: z.string().trim().min(6).max(20),
+        ...deviceSchema,
+        userAgent: z.string().max(200).optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const code = data.code.toUpperCase().replace(/\s/g, "");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // ── 1. Resolve the code ──────────────────────────────────────────────────
+    // Try transactions table first (M-Pesa reference)
+    let subscriptionId: string | null = null;
+
+    const { data: tx } = await supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .eq("transaction_reference", code)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (tx) {
+      // Find the subscription that was activated for this transaction
+      // We join via plan_id + created_at proximity (best match within 5 minutes)
+      const { data: sub } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("id")
+        .eq("status", "active")
+        .gt("end_time", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      subscriptionId = sub?.id ?? null;
+    }
+
+    // Try vouchers table if no tx match
+    if (!subscriptionId) {
+      const { data: voucher } = await supabaseAdmin
+        .from("vouchers")
+        .select("id, subscription_id")
+        .eq("code", code)
+        .in("status", ["active", "used"])
+        .maybeSingle();
+      if (voucher?.subscription_id) {
+        subscriptionId = voucher.subscription_id as string;
+      }
+    }
+
+    if (!subscriptionId) {
+      return { ok: false as const, message: "No active session found for that code. Check the code and try again." };
+    }
+
+    // ── 2. Load the current subscription ────────────────────────────────────
+    const { data: sub } = await supabaseAdmin
+      .from("user_subscriptions")
+      .select("id, mac_address, ip_address, end_time, router_id, internet_plans(duration_value, duration_type)")
+      .eq("id", subscriptionId)
+      .eq("status", "active")
+      .gt("end_time", new Date().toISOString())
+      .maybeSingle();
+
+    if (!sub) {
+      return { ok: false as const, message: "Session has expired or was already terminated." };
+    }
+
+    const remainingMs = new Date(sub.end_time as string).getTime() - Date.now();
+    const remainingMinutes = Math.floor(remainingMs / 60_000);
+
+    const oldMac = (sub.mac_address as string | null) ?? null;
+    const oldIp = (sub.ip_address as string | null) ?? null;
+    const newMac = data.macAddress ?? null;
+    const newIp = data.ipAddress ?? null;
+
+    // Nothing to transfer — already the same device
+    if (oldMac && oldMac === newMac) {
+      return { ok: true as const, message: "This device is already the registered device for that session." };
+    }
+
+    // ── 3 & 4. Update subscription ───────────────────────────────────────────
+    const { error: updateErr } = await supabaseAdmin
+      .from("user_subscriptions")
+      .update({
+        previous_mac_address: oldMac,
+        mac_address: newMac,
+        ip_address: newIp,
+        user_agent: data.userAgent ?? null,
+        last_reconnect_at: new Date().toISOString(),
+      })
+      .eq("id", subscriptionId);
+
+    if (updateErr) {
+      return { ok: false as const, message: "Database error — could not transfer session." };
+    }
+
+    // ── 5. Router: revoke old, authorize new ─────────────────────────────────
+    if (sub.router_id) {
+      const { data: router } = await supabaseAdmin
+        .from("routers")
+        .select("ip_address, api_port")
+        .eq("id", sub.router_id as string)
+        .maybeSingle();
+
+      if (router) {
+        const { transferDevice } = await import("./routerService");
+        await transferDevice({
+          oldMac,
+          oldIp,
+          newMac,
+          newIp,
+          remainingMinutes,
+          target: router,
+        }).catch(() => null); // non-fatal — session is already updated in DB
+      }
+    }
+
+    return {
+      ok: true as const,
+      message: "Session successfully transferred to this device! You are now online.",
+    };
+  });
+
+/* ─── Device-lock check (client calls this to detect a locked session) ─── */
+
+/**
+ * Returns the registered MAC for a session identified by phone number so the
+ * portal can show the "Device Locked" screen when the current device differs.
+ */
+export const checkDeviceLock = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        phone: z.string().min(9).max(15).optional().nullable(),
+        macAddress: z.string().max(32).optional().nullable(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }): Promise<{
+    locked: boolean;
+    registeredMac: string | null;
+    currentMac: string | null;
+    subscriptionId: string | null;
+    planName: string | null;
+    endTime: string | null;
+  }> => {
+    if (!data.phone && !data.macAddress) {
+      return { locked: false, registeredMac: null, currentMac: data.macAddress ?? null, subscriptionId: null, planName: null, endTime: null };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // If we already know the MAC, check if there's an *active* session for a *different* MAC on the same phone
+    let query = supabaseAdmin
+      .from("user_subscriptions")
+      .select("id, mac_address, end_time, internet_plans(name)")
+      .eq("status", "active")
+      .gt("end_time", new Date().toISOString())
+      .order("end_time", { ascending: false })
+      .limit(1);
+
+    if (data.phone) {
+      const normalized = normalizePhone(data.phone) ?? data.phone;
+      query = query.eq("phone_number", normalized) as typeof query;
+    } else {
+      // MAC is known — already the registered device
+      return { locked: false, registeredMac: data.macAddress ?? null, currentMac: data.macAddress ?? null, subscriptionId: null, planName: null, endTime: null };
+    }
+
+    const { data: rows } = await query;
+    type SubRow = { id: string; mac_address: string | null; end_time: string; internet_plans?: { name: string } | null };
+    const sub = rows?.[0] as unknown as SubRow | undefined;
+
+    if (!sub) {
+      return { locked: false, registeredMac: null, currentMac: data.macAddress ?? null, subscriptionId: null, planName: null, endTime: null };
+    }
+
+    const isSameDevice = !sub.mac_address || sub.mac_address === data.macAddress;
+
+    return {
+      locked: !isSameDevice,
+      registeredMac: sub.mac_address ?? null,
+      currentMac: data.macAddress ?? null,
+      subscriptionId: sub.id,
+      planName: sub.internet_plans?.name ?? null,
+      endTime: sub.end_time,
+    };
+  });
+
+/* ─── Tethering flag (called by portal or background worker) ─── */
+
+export const flagSuspiciousTethering = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ subscriptionId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("user_subscriptions")
+      .update({
+        suspicious_tethering: true,
+        tether_attempts_count: supabaseAdmin.rpc("increment_tether_count" as any, { sub_id: data.subscriptionId }) as any,
+      })
+      .eq("id", data.subscriptionId);
+    return { ok: true as const };
+  });
+
+/* ─── Admin: update global network setting ─── */
+
+export const updateNetworkSetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ key: z.string().min(1).max(60), value: z.string().max(200) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("network_settings")
+      .upsert({ key: data.key, value: data.value, updated_at: new Date().toISOString() });
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const, message: "Setting updated" };
+  });
+
+/* ─── Admin: apply / remove anti-tethering rules on all online routers ─── */
+
+export const applyAntiTetheringToAllRouters = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ enable: z.boolean() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: routers } = await supabaseAdmin
+      .from("routers")
+      .select("ip_address, api_port")
+      .eq("status", "online");
+
+    if (!routers?.length) {
+      return { ok: true as const, message: "No online routers found — settings saved only in DB." };
+    }
+
+    const { applyAntiTetheringRules, removeAntiTetheringRules } = await import("./routerService");
+    let applied = 0;
+    for (const r of routers) {
+      const result = data.enable
+        ? await applyAntiTetheringRules(r)
+        : await removeAntiTetheringRules(r);
+      if (result.ok) applied++;
+    }
+
+    return {
+      ok: true as const,
+      message: `${data.enable ? "Applied" : "Removed"} anti-tethering rules on ${applied}/${routers.length} router(s).`,
+    };
+  });

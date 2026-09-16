@@ -236,11 +236,10 @@
   color: white;
   font-size: 0.8125rem;
   height: 2.25rem;
-}
-
-@utility admin-input:focus {
-  border-color: rgba(0,243,255,0.4);
-  box-shadow: 0 0 0 2px rgba(0,243,255,0.1);
+  &:focus {
+    border-color: rgba(0,243,255,0.4);
+    box-shadow: 0 0 0 2px rgba(0,243,255,0.1);
+  }
 }
 
 @utility admin-btn-primary {
@@ -249,22 +248,20 @@
   font-weight: 600;
   font-size: 0.8125rem;
   border: none;
-}
-
-@utility admin-btn-primary:hover {
-  opacity: 0.9;
+  &:hover {
+    opacity: 0.9;
+  }
 }
 
 @utility admin-btn-outline {
   background-color: transparent;
   border-color: rgba(255,255,255,0.1);
   color: #94a3b8;
-}
-
-@utility admin-btn-outline:hover {
-  background-color: rgba(255,255,255,0.06);
-  color: white;
-  border-color: rgba(255,255,255,0.16);
+  &:hover {
+    background-color: rgba(255,255,255,0.06);
+    color: white;
+    border-color: rgba(255,255,255,0.16);
+  }
 }
 
 @utility admin-badge-green {
