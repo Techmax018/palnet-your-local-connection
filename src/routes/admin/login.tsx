@@ -75,15 +75,24 @@ function AdminLogin() {
       />
 
       <div className="relative w-full max-w-sm space-y-6">
-        {/* Brand */}
+        {/* Brand / Logo */}
         <div className="space-y-3 text-center">
           <div className="relative inline-block">
-            <img
-              src="/favicon.png"
-              alt="PalNet"
-              className="mx-auto h-16 w-16 rounded-2xl object-cover ring-2 ring-cyan-500/30"
-              style={{ boxShadow: "0 0 40px rgba(0,243,255,0.2)" }}
-            />
+            {/* Logo with cyan glow ring */}
+            <div
+              className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg, #0b1622, #0d1f2d)",
+                boxShadow: "0 0 0 2px rgba(0,243,255,0.25), 0 0 40px rgba(0,243,255,0.2)",
+              }}
+            >
+              <img
+                src="/favicon.png"
+                alt="PalNet"
+                className="h-14 w-14 object-contain"
+              />
+            </div>
+            {/* Online indicator */}
             <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[#0b0f19] bg-emerald-400" />
           </div>
           <div>

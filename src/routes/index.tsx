@@ -225,14 +225,13 @@ function VoucherBar() {
 }
 
 /* ═══════════════════════════════════════════════
-   HOME PLAN CARD (with account ID input)
+   HOME PLAN CARD — no house number required;
+   account ID is auto-generated after payment
 ═══════════════════════════════════════════════ */
 function HomePlanCard({ plan, badge, onSelect }: {
   plan: Plan; badge?: string;
-  onSelect: (plan: Plan, accountId: string) => void;
+  onSelect: (plan: Plan) => void;
 }) {
-  const [accountId, setAccountId] = useState("");
-
   return (
     <div className="surface-panel relative overflow-hidden p-3 gap-0">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
@@ -253,17 +252,13 @@ function HomePlanCard({ plan, badge, onSelect }: {
       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
         <Clock className="size-3" />{planDurationLabel(plan)}
       </p>
-      <Input
-        value={accountId}
-        onChange={(e) => setAccountId(e.target.value)}
-        placeholder="House / Account ID"
-        className="mt-2 h-7 text-xs"
-      />
+      <p className="mt-1.5 text-xs text-muted-foreground/70 leading-relaxed">
+        Your account ID is generated automatically after a successful payment.
+      </p>
       <Button
         size="sm"
         className="mt-2 w-full font-display text-xs h-7"
-        disabled={!accountId.trim()}
-        onClick={() => onSelect(plan, accountId.trim())}
+        onClick={() => onSelect(plan)}
       >
         <Smartphone className="size-3" /> Pay with M-Pesa
       </Button>
@@ -370,7 +365,7 @@ function CaptivePortal() {
   const [accountId, setAccountId] = useState<string | undefined>(undefined);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("hotspot");
 
   // Device-lock detection: check if this device is the registered device for
   // any phone-based session lookup
@@ -493,7 +488,7 @@ function CaptivePortal() {
                     key={p.id}
                     plan={p}
                     badge={homeBadge(p)}
-                    onSelect={(plan, accId) => openCheckout(plan, accId)}
+                    onSelect={(plan) => openCheckout(plan)}
                   />
                 ))}
               </div>

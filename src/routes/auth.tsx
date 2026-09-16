@@ -74,12 +74,19 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="surface-panel w-full max-w-md gap-0 p-6 glow-primary">
         <div className="flex flex-col items-center text-center">
-          {/* Use the local favicon so no external CDN 404s */}
-          <img
-            src="/favicon.png"
-            alt="PalNet logo"
-            className="size-16 rounded-2xl border border-border object-cover"
-          />
+          <div
+            className="flex h-20 w-20 items-center justify-center rounded-2xl overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #0b1622, #0d1f2d)",
+              boxShadow: "0 0 0 2px rgba(0,243,255,0.2), 0 0 30px rgba(0,243,255,0.15)",
+            }}
+          >
+            <img
+              src="/favicon.png"
+              alt="PalNet logo"
+              className="h-14 w-14 object-contain"
+            />
+          </div>
           <h1 className="mt-3 font-display text-2xl font-black text-gradient-brand">PalNet</h1>
           <p className="text-sm text-muted-foreground">Local Wi-Fi, Home ISP & TV billing portal</p>
         </div>
