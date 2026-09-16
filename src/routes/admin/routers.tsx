@@ -2,19 +2,13 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Loader2, Wifi, WifiOff, RefreshCw, Pencil } from "lucide-react";
+import { Plus, Loader2, RefreshCw, Pencil, Circle, Activity } from "lucide-react";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { saveRouter, testRouterConnection } from "@/lib/palnet.functions";
 
@@ -24,38 +18,13 @@ export const Route = createFileRoute("/admin/_layout/routers")({
 });
 
 type Router = {
-  id: string;
-  name: string;
-  ip_address: string;
-  api_port: number;
-  location: string | null;
-  status: string;
-  last_ping: string | null;
+  id: string; name: string; ip_address: string; api_port: number;
+  location: string | null; status: string; last_ping: string | null;
 };
 
-function useRouters() {
-  return useQuery({
-    queryKey: ["admin-routers"],
-    refetchInterval: 15_000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("routers")
-        .select("*")
-        .order("name");
-      return (data ?? []) as Router[];
-    },
-  });
-}
-
-const EMPTY: Omit<Router, "id" | "status" | "last_ping"> = {
-  name: "",
-  ip_address: "",
-  api_port: 8728,
-  location: "",
-};
+const EMPTY = { name: "", ip_address: "", api_port: 8728, location: "" };
 
 function AdminRouters() {
-  const { data: routers, isLoading } = useRouters();
   const queryClient = useQueryClient();
   const save = useServerFn(saveRouter);
   const pingFn = useServerFn(testRouterConnection);
@@ -64,12 +33,18 @@ function AdminRouters() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  function openNew() {
-    setEditing(null);
-    setForm(EMPTY);
-    setDialogOpen(true);
-  }
+  const { data: routers, isLoading } = useQuery({
+    queryKey: ["admin-routers"],
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("routers").select("*").order("name");
+      return (data ?? []) as Router[];
+    },
+  });
 
+  function openNew() {
+    setEditing(null); setForm(EMPTY); setDialogOpen(true);
+  }
   function openEdit(r: Router) {
     setEditing(r);
     setForm({ name: r.name, ip_address: r.ip_address, api_port: r.api_port, location: r.location ?? "" });
@@ -79,25 +54,11 @@ function AdminRouters() {
   async function handleSave() {
     setBusy("save");
     try {
-      const result = await save({
-        data: {
-          id: editing?.id ?? null,
-          name: form.name,
-          ip_address: form.ip_address,
-          api_port: Number(form.api_port),
-          location: form.location || null,
-        },
-      });
+      const result = await save({ data: { id: editing?.id ?? null, name: form.name, ip_address: form.ip_address, api_port: Number(form.api_port), location: form.location || null } });
       toast[result.ok ? "success" : "error"](result.message);
-      if (result.ok) {
-        setDialogOpen(false);
-        await queryClient.invalidateQueries({ queryKey: ["admin-routers"] });
-      }
-    } catch {
-      toast.error("Failed to save router");
-    } finally {
-      setBusy(null);
-    }
+      if (result.ok) { setDialogOpen(false); await queryClient.invalidateQueries({ queryKey: ["admin-routers"] }); }
+    } catch { toast.error("Failed to save router"); }
+    finally { setBusy(null); }
   }
 
   async function handlePing(routerId: string) {
@@ -106,33 +67,34 @@ function AdminRouters() {
       const result = await pingFn({ data: { routerId } });
       toast[result.ok && result.online ? "success" : "error"](result.message);
       await queryClient.invalidateQueries({ queryKey: ["admin-routers"] });
-    } catch {
-      toast.error("Ping failed");
-    } finally {
-      setBusy(null);
-    }
+    } catch { toast.error("Ping failed"); }
+    finally { setBusy(null); }
   }
+
+  const online = (routers ?? []).filter((r) => r.status === "online").length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Routers</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">MikroTik / OpenWrt access points</p>
+          <h1 className="text-xl font-bold text-white">Routers</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {online} online / {(routers ?? []).length} total · MikroTik / OpenWrt nodes
+          </p>
         </div>
-        <Button size="sm" className="gap-1.5 text-xs font-display" onClick={openNew}>
+        <Button size="sm" className="admin-btn-primary h-8 gap-1.5 text-xs" onClick={openNew}>
           <Plus className="size-3.5" /> Add Router
         </Button>
       </div>
 
-      <Card className="surface-panel p-0 overflow-hidden gap-0">
+      <div className="admin-card overflow-hidden">
         {isLoading ? (
-          <div className="p-4 space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 rounded" />)}</div>
+          <div className="p-4 space-y-2">{[0,1,2,3].map((i) => <Skeleton key={i} className="h-12 admin-skeleton rounded-lg" />)}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border/70 text-muted-foreground">
+                <tr className="border-b border-slate-800 text-slate-500">
                   <th className="px-4 py-3 text-left font-medium">Name</th>
                   <th className="px-4 py-3 text-left font-medium">IP : Port</th>
                   <th className="px-4 py-3 text-left font-medium">Location</th>
@@ -141,51 +103,42 @@ function AdminRouters() {
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-slate-800/60">
                 {routers?.map((r) => (
-                  <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-display font-semibold">{r.name}</td>
-                    <td className="px-4 py-3 font-display text-muted-foreground">
-                      {r.ip_address}:{r.api_port}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.location ?? "—"}</td>
+                  <tr key={r.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-white">{r.name}</td>
+                    <td className="px-4 py-3 font-mono text-slate-400">{r.ip_address}:{r.api_port}</td>
+                    <td className="px-4 py-3 text-slate-400">{r.location ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                         r.status === "online"
-                          ? "bg-success/20 text-success"
-                          : "bg-destructive/20 text-destructive"
+                          ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
+                          : "bg-red-500/15 text-red-400 ring-1 ring-red-500/20"
                       }`}>
-                        {r.status === "online"
-                          ? <Wifi className="size-3" />
-                          : <WifiOff className="size-3" />}
-                        {r.status}
+                        <Circle className={`size-1.5 ${r.status === "online" ? "fill-emerald-400" : "fill-red-400"}`} />
+                        {r.status === "online" ? "Online" : "Offline"}
+                        {r.status === "offline" && r.last_ping && (
+                          <span className="text-red-500/60 ml-0.5">
+                            · Last ping {Math.round((Date.now() - new Date(r.last_ping).getTime()) / 60000)}m ago
+                          </span>
+                        )}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-4 py-3 font-mono text-slate-500">
                       {r.last_ping
                         ? new Date(r.last_ping).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })
                         : "Never"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          disabled={busy === r.id}
-                          onClick={() => handlePing(r.id)}
-                        >
-                          {busy === r.id
-                            ? <Loader2 className="size-3 animate-spin" />
-                            : <RefreshCw className="size-3" />}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" disabled={busy === r.id} onClick={() => handlePing(r.id)}>
+                          {busy === r.id ? <Loader2 className="size-3 animate-spin" /> : <Activity className="size-3" />}
                           Ping
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => openEdit(r)}
-                        >
+                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs">
+                          <Activity className="size-3" /> Logs
+                        </Button>
+                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" onClick={() => openEdit(r)}>
                           <Pencil className="size-3" /> Edit
                         </Button>
                       </div>
@@ -193,62 +146,41 @@ function AdminRouters() {
                   </tr>
                 ))}
                 {!routers?.length && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                      No routers added yet
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-600">No routers added yet</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+      <Dialog open={dialogOpen} onOpenChange={(o) => !o && setDialogOpen(false)}>
+        <DialogContent className="admin-dialog sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-display text-sm">
-              {editing ? "Edit Router" : "Add Router"}
+            <DialogTitle className="text-white text-sm font-bold">
+              {editing ? "Edit Router" : "Add Router Node"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 pt-1">
-            {(["name", "ip_address"] as const).map((field) => (
-              <div key={field} className="space-y-1.5">
-                <Label className="text-xs capitalize">{field.replace("_", " ")}</Label>
-                <Input
-                  value={form[field] as string}
-                  onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                  className="h-9 text-sm"
-                  placeholder={field === "name" ? "PalNet-Core-01" : "192.168.88.1"}
-                />
-              </div>
-            ))}
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1.5">
+              <Label className="admin-label">Router Name</Label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="admin-input" placeholder="PalNet-Core-01" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="admin-label">IP Address</Label>
+              <Input value={form.ip_address} onChange={(e) => setForm((f) => ({ ...f, ip_address: e.target.value }))} className="admin-input" placeholder="192.168.88.1" />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">API Port</Label>
-                <Input
-                  type="number"
-                  value={form.api_port}
-                  onChange={(e) => setForm((f) => ({ ...f, api_port: Number(e.target.value) }))}
-                  className="h-9 text-sm"
-                />
+                <Label className="admin-label">API Port</Label>
+                <Input type="number" value={form.api_port} onChange={(e) => setForm((f) => ({ ...f, api_port: Number(e.target.value) }))} className="admin-input" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Location</Label>
-                <Input
-                  value={form.location ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                  className="h-9 text-sm"
-                  placeholder="Rooftop Mast"
-                />
+                <Label className="admin-label">Location</Label>
+                <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className="admin-input" placeholder="Rooftop Mast" />
               </div>
             </div>
-            <Button
-              className="w-full font-display text-sm"
-              disabled={busy === "save" || !form.name || !form.ip_address}
-              onClick={handleSave}
-            >
+            <Button className="admin-btn-primary w-full" disabled={busy === "save" || !form.name || !form.ip_address} onClick={handleSave}>
               {busy === "save" && <Loader2 className="animate-spin size-4" />}
               {editing ? "Save Changes" : "Add Router"}
             </Button>

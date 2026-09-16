@@ -2,13 +2,10 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Download } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKes } from "@/lib/palnet";
 
@@ -18,13 +15,9 @@ export const Route = createFileRoute("/admin/_layout/transactions")({
 });
 
 type Tx = {
-  id: string;
-  created_at: string;
-  phone_number: string | null;
-  amount_kes: number;
-  payment_method: string;
-  transaction_reference: string | null;
-  status: string;
+  id: string; created_at: string; phone_number: string | null;
+  amount_kes: number; payment_method: string;
+  transaction_reference: string | null; status: string;
   internet_plans: { name: string } | null;
 };
 
@@ -46,39 +39,23 @@ function AdminTransactions() {
   });
 
   const filtered = (transactions ?? []).filter((tx) => {
-    const matchSearch =
-      !search ||
+    const matchSearch = !search ||
       tx.phone_number?.includes(search) ||
       tx.transaction_reference?.toLowerCase().includes(search.toLowerCase()) ||
       tx.internet_plans?.name.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || tx.status === statusFilter;
-    return matchSearch && matchStatus;
+    return matchSearch && (statusFilter === "all" || tx.status === statusFilter);
   });
 
-  const totals = filtered.reduce(
-    (acc, tx) => {
-      if (tx.status === "completed") acc.revenue += Number(tx.amount_kes);
-      acc.count += 1;
-      return acc;
-    },
-    { revenue: 0, count: 0 },
-  );
+  const revenue = filtered
+    .filter((tx) => tx.status === "completed")
+    .reduce((s, tx) => s + Number(tx.amount_kes), 0);
 
   function exportCsv() {
     const header = "Date,Phone,Plan,Amount,Method,Reference,Status\n";
-    const rows = filtered
-      .map((tx) =>
-        [
-          new Date(tx.created_at).toISOString(),
-          tx.phone_number ?? "",
-          tx.internet_plans?.name ?? "",
-          tx.amount_kes,
-          tx.payment_method,
-          tx.transaction_reference ?? "",
-          tx.status,
-        ].join(","),
-      )
-      .join("\n");
+    const rows = filtered.map((tx) =>
+      [new Date(tx.created_at).toISOString(), tx.phone_number ?? "", tx.internet_plans?.name ?? "",
+        tx.amount_kes, tx.payment_method, tx.transaction_reference ?? "", tx.status].join(",")
+    ).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -92,29 +69,28 @@ function AdminTransactions() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Transactions</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totals.count} records · {formatKes(totals.revenue)} revenue shown
+          <h1 className="text-xl font-bold text-white">M-Pesa Transactions</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {filtered.length} records · {formatKes(revenue)} confirmed revenue
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportCsv}>
+        <Button variant="outline" size="sm" className="admin-btn-outline gap-1.5 text-xs h-8" onClick={exportCsv}>
           <Download className="size-3.5" /> Export CSV
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-40">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-500" />
           <Input
-            placeholder="Phone, reference, plan…"
+            placeholder="Phone number, M-Pesa ref, plan…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="admin-input pl-9 h-8 text-xs"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-8 text-xs w-36">
+          <SelectTrigger className="admin-input h-8 text-xs w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -126,68 +102,51 @@ function AdminTransactions() {
         </Select>
       </div>
 
-      <Card className="surface-panel p-0 overflow-hidden gap-0">
+      <div className="admin-card overflow-hidden">
         {isLoading ? (
-          <div className="p-4 space-y-2">
-            {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-9 rounded" />)}
-          </div>
+          <div className="p-4 space-y-2">{[0,1,2,3,4].map((i) => <Skeleton key={i} className="h-9 admin-skeleton rounded" />)}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border/70 text-muted-foreground">
-                  <th className="px-4 py-2.5 text-left font-medium">Date / Time</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Phone</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Plan</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Amount</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Method</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Reference</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                <tr className="border-b border-slate-800 text-slate-500">
+                  <th className="px-4 py-3 text-left font-medium">Timestamp</th>
+                  <th className="px-4 py-3 text-left font-medium">Plan Name</th>
+                  <th className="px-4 py-3 text-left font-medium">Customer Phone</th>
+                  <th className="px-4 py-3 text-right font-medium">Amount (KES)</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">M-Pesa Ref</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-slate-800/60">
                 {filtered.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
-                      {new Date(tx.created_at).toLocaleString("en-KE", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
+                  <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-slate-500 tabular-nums whitespace-nowrap">
+                      {new Date(tx.created_at).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })}
                     </td>
-                    <td className="px-4 py-2.5 font-display">{tx.phone_number ?? "—"}</td>
-                    <td className="px-4 py-2.5">{tx.internet_plans?.name ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right font-display font-semibold text-success">
-                      {formatKes(tx.amount_kes)}
-                    </td>
-                    <td className="px-4 py-2.5 capitalize">{tx.payment_method}</td>
-                    <td className="px-4 py-2.5 font-display text-muted-foreground tracking-wide">
-                      {tx.transaction_reference ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3 text-slate-300">{tx.internet_plans?.name ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-white">{tx.phone_number ?? "—"}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-400">{formatKes(tx.amount_kes)}</td>
+                    <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        tx.status === "completed"
-                          ? "bg-success/20 text-success"
-                          : tx.status === "pending"
-                          ? "bg-warning/20 text-warning"
-                          : "bg-destructive/20 text-destructive"
+                        tx.status === "completed" ? "bg-emerald-500/15 text-emerald-400" :
+                        tx.status === "pending" ? "bg-amber-500/15 text-amber-400" :
+                        "bg-red-500/15 text-red-400"
                       }`}>
                         {tx.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{tx.transaction_reference ?? "—"}</td>
                   </tr>
                 ))}
                 {!filtered.length && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                      No transactions found
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-600">No transactions found</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

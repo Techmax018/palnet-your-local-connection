@@ -192,3 +192,99 @@
     box-shadow: 0 0 0 6px color-mix(in oklab, var(--success) 0%, transparent);
   }
 }
+
+/* ──────────────────────────────────────
+   PalNet Admin — dark luxury ISP theme
+   ────────────────────────────────────── */
+
+@utility admin-bg {
+  background-color: #0b0f19;
+  background-image:
+    radial-gradient(600px circle at 10% 0%, rgba(0, 243, 255, 0.04), transparent 55%),
+    radial-gradient(500px circle at 90% 100%, rgba(99, 102, 241, 0.05), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+@utility admin-card {
+  background-color: #111827;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 0.875rem;
+}
+
+@utility admin-nav-active {
+  background: linear-gradient(90deg, rgba(0,243,255,0.12) 0%, rgba(0,243,255,0.04) 100%);
+  color: white;
+  border: 1px solid rgba(0,243,255,0.2);
+  border-radius: 0.5rem;
+}
+
+@utility admin-skeleton {
+  background-color: rgba(255,255,255,0.04);
+}
+
+@utility admin-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+@utility admin-input {
+  background-color: #0d1117;
+  border-color: rgba(255,255,255,0.08);
+  color: white;
+  font-size: 0.8125rem;
+  height: 2.25rem;
+}
+
+@utility admin-input:focus {
+  border-color: rgba(0,243,255,0.4);
+  box-shadow: 0 0 0 2px rgba(0,243,255,0.1);
+}
+
+@utility admin-btn-primary {
+  background: linear-gradient(135deg, #0ea5e9, #00f3ff 80%);
+  color: #0b0f19;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  border: none;
+}
+
+@utility admin-btn-primary:hover {
+  opacity: 0.9;
+}
+
+@utility admin-btn-outline {
+  background-color: transparent;
+  border-color: rgba(255,255,255,0.1);
+  color: #94a3b8;
+}
+
+@utility admin-btn-outline:hover {
+  background-color: rgba(255,255,255,0.06);
+  color: white;
+  border-color: rgba(255,255,255,0.16);
+}
+
+@utility admin-badge-green {
+  background-color: rgba(16,185,129,0.12);
+  color: #34d399;
+  ring: 1px solid rgba(16,185,129,0.2);
+}
+
+@utility admin-badge-yellow {
+  background-color: rgba(245,158,11,0.12);
+  color: #fbbf24;
+}
+
+@utility admin-badge-red {
+  background-color: rgba(239,68,68,0.12);
+  color: #f87171;
+}
+
+@utility admin-dialog {
+  background-color: #111827;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: white;
+}
