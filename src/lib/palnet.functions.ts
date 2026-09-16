@@ -193,22 +193,28 @@ export const lookupGuestSession = createServerFn({ method: "POST" })
       : query.eq("phone_number", normalizePhone(data.phone!) ?? data.phone!);
 
     const { data: rows } = await query;
-    const row = rows?.[0] as
-      | (Record<string, unknown> & {
-          internet_plans?: { name: string; category: string; speed_limit_mbps: number } | null;
-          routers?: { name: string } | null;
-        })
-      | undefined;
+    type Row = {
+      id: string;
+      start_time: string;
+      end_time: string;
+      mac_address: string | null;
+      ip_address: string | null;
+      device_label: string | null;
+      status: string;
+      internet_plans?: { name: string; category: string; speed_limit_mbps: number } | null;
+      routers?: { name: string } | null;
+    };
+    const row = rows?.[0] as unknown as Row | undefined;
     if (!row) return null;
 
     return {
-      id: row.id as string,
-      start_time: row.start_time as string,
-      end_time: row.end_time as string,
-      mac_address: (row.mac_address as string | null) ?? null,
-      ip_address: (row.ip_address as string | null) ?? null,
-      device_label: (row.device_label as string | null) ?? null,
-      status: row.status as string,
+      id: row.id,
+      start_time: row.start_time,
+      end_time: row.end_time,
+      mac_address: row.mac_address ?? null,
+      ip_address: row.ip_address ?? null,
+      device_label: row.device_label ?? null,
+      status: row.status,
       plan_name: row.internet_plans?.name ?? null,
       plan_category: row.internet_plans?.category ?? null,
       speed_limit_mbps: row.internet_plans?.speed_limit_mbps ?? null,
