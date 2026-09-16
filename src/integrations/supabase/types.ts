@@ -114,8 +114,12 @@ export type Database = {
         Row: {
           amount_kes: number
           created_at: string
+          device_label: string | null
           id: string
+          ip_address: string | null
+          mac_address: string | null
           payment_method: string
+          phone_number: string | null
           plan_id: string | null
           status: string
           transaction_reference: string | null
@@ -124,8 +128,12 @@ export type Database = {
         Insert: {
           amount_kes: number
           created_at?: string
+          device_label?: string | null
           id?: string
+          ip_address?: string | null
+          mac_address?: string | null
           payment_method: string
+          phone_number?: string | null
           plan_id?: string | null
           status?: string
           transaction_reference?: string | null
@@ -134,8 +142,12 @@ export type Database = {
         Update: {
           amount_kes?: number
           created_at?: string
+          device_label?: string | null
           id?: string
+          ip_address?: string | null
+          mac_address?: string | null
           payment_method?: string
+          phone_number?: string | null
           plan_id?: string | null
           status?: string
           transaction_reference?: string | null
@@ -182,39 +194,45 @@ export type Database = {
       user_subscriptions: {
         Row: {
           created_at: string
+          device_label: string | null
           end_time: string
           id: string
           ip_address: string | null
           mac_address: string | null
+          phone_number: string | null
           plan_id: string
           router_id: string | null
           start_time: string
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
+          device_label?: string | null
           end_time: string
           id?: string
           ip_address?: string | null
           mac_address?: string | null
+          phone_number?: string | null
           plan_id: string
           router_id?: string | null
           start_time?: string
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
+          device_label?: string | null
           end_time?: string
           id?: string
           ip_address?: string | null
           mac_address?: string | null
+          phone_number?: string | null
           plan_id?: string
           router_id?: string | null
           start_time?: string
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
