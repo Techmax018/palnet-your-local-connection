@@ -11,7 +11,7 @@ const STEPS = [
   {
     icon: Wifi,
     title: "Connect to PalNet Wi-Fi",
-    body: "On your Smart TV or Android Box, open Settings → Network → Wi-Fi and connect to the "PalNet-WiFi" network.",
+    body: 'On your Smart TV or Android Box, open Settings → Network → Wi-Fi and connect to the "PalNet-WiFi" network.',
   },
   {
     icon: QrCode,
