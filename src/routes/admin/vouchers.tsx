@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateVouchers } from "@/lib/palnet.functions";
 import { formatKes, planDurationLabel, type Plan } from "@/lib/palnet";
 
-export const Route = createFileRoute("/admin/_layout/vouchers")({
+export const Route = createFileRoute("/admin/vouchers")({
   head: () => ({ meta: [{ title: "PalNet Admin — Vouchers" }] }),
   component: AdminVouchers,
 });

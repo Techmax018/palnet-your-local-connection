@@ -17,7 +17,7 @@ import {
 } from "@/lib/palnet.functions";
 import { formatCountdown } from "@/lib/palnet";
 
-export const Route = createFileRoute("/admin/_layout/anti-tethering")({
+export const Route = createFileRoute("/admin/anti-tethering")({
   head: () => ({ meta: [{ title: "PalNet Admin — Anti-Tethering" }] }),
   component: AdminAntiTethering,
 });
