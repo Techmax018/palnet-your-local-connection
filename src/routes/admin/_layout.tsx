@@ -131,16 +131,13 @@ function Sidebar({
           collapsed ? "justify-center px-3" : "px-5"
         }`}
       >
-        {/* Logo with cyan glow */}
+        {/* Logo */}
         <div className="relative shrink-0">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl"
-            style={{
-              background: "linear-gradient(135deg, #0891b2, #06b6d4)",
-              boxShadow: "0 0 18px rgba(0,243,255,0.35)",
-            }}
+            className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden"
+            style={{ boxShadow: "0 0 18px rgba(0,243,255,0.35)" }}
           >
-            <Wifi className="size-5 text-white" />
+            <img src="/favicon.png" alt="PalNet" className="h-9 w-9 object-contain" />
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d1117] bg-emerald-400" />
         </div>
@@ -427,9 +424,9 @@ function AdminLayout() {
   return (
     <div className="flex h-screen overflow-hidden admin-bg">
 
-      {/* ── Desktop sidebar ── */}
+      {/* ── Desktop sidebar — visible from md (768px) upward ── */}
       <aside
-        className={`hidden lg:flex shrink-0 flex-col border-r border-slate-800/80 transition-all duration-300 ease-in-out ${sidebarWidth}`}
+        className={`hidden md:flex shrink-0 flex-col border-r border-slate-800/80 transition-all duration-300 ease-in-out ${sidebarWidth}`}
       >
         <Sidebar
           {...sidebarProps}
@@ -437,9 +434,9 @@ function AdminLayout() {
         />
       </aside>
 
-      {/* ── Mobile drawer overlay ── */}
+      {/* ── Mobile drawer overlay — only below md ── */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -468,17 +465,17 @@ function AdminLayout() {
             backdropFilter: "blur(14px)",
           }}
         >
-          {/* Mobile hamburger */}
+          {/* Mobile hamburger — below md only */}
           <button
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white lg:hidden"
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white md:hidden"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="size-5" />
           </button>
 
-          {/* Desktop collapse toggle (shown inside header as an alternative) */}
+          {/* Desktop collapse toggle — md and above */}
           <button
-            className="hidden rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-800 hover:text-cyan-400 lg:flex"
+            className="hidden rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-800 hover:text-cyan-400 md:flex"
             onClick={() => setCollapsed((c) => !c)}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
