@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/admin/settings")({
+export const Route = createFileRoute("/admin/_layout/settings")({
   head: () => ({ meta: [{ title: "PalNet Admin — Settings" }] }),
   component: AdminSettings,
 });

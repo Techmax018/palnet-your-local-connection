@@ -1,23 +1,13 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, ShieldCheck, Wifi } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useIsAdmin, useSession } from "@/hooks/usePalNet";
+/**
+ * PalNetHeader — Public customer portal header.
+ *
+ * Deliberately has NO sign-in/sign-out buttons.
+ * The portal is 100% public. A discrete "ISP Admin" link in the footer
+ * of the portal page routes admins to /admin/login.
+ */
+import { Link } from "@tanstack/react-router";
 
 export function PalNetHeader({ online = true }: { online?: boolean }) {
-  const { user } = useSession();
-  const { data: isAdmin } = useIsAdmin(user?.id);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  async function signOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
-
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
@@ -43,35 +33,6 @@ export function PalNetHeader({ online = true }: { online?: boolean }) {
             </span>
           </span>
         </Link>
-
-        {/* Right actions */}
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-              <Link to="/admin">
-                <ShieldCheck className="size-3.5" />
-                <span className="hidden sm:inline">Control Center</span>
-              </Link>
-            </Button>
-          )}
-          {user ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs gap-1.5"
-              onClick={signOut}
-            >
-              <LogOut className="size-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
-          ) : (
-            <Button asChild size="sm" className="h-8 text-xs gap-1.5">
-              <Link to="/auth">
-                <Wifi className="size-3.5" /> Sign in
-              </Link>
-            </Button>
-          )}
-        </div>
       </div>
     </header>
   );

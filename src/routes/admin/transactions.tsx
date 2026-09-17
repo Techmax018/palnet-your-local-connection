@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { formatKes } from "@/lib/palnet";
 
-export const Route = createFileRoute("/admin/transactions")({
+export const Route = createFileRoute("/admin/_layout/transactions")({
   head: () => ({ meta: [{ title: "PalNet Admin — Transactions" }] }),
   component: AdminTransactions,
 });

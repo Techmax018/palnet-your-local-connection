@@ -377,7 +377,7 @@ function CaptivePortal() {
           <ShieldCheck className="size-3.5 text-accent" />
           Payments secured via M-Pesa · PalNet never stores your PIN.
           {!user && (
-            <><span> · </span><Link to="/auth" className="text-accent underline underline-offset-2">Admin sign in</Link></>
+            <><span> · </span><Link to="/admin/login" className="text-accent/60 hover:text-accent transition-colors text-xs">ISP Admin</Link></>
           )}
         </p>
       </main>
