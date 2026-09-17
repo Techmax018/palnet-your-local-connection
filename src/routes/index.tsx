@@ -243,7 +243,6 @@ function SkeletonGrid({ cols, rows = 2 }: { cols: number; rows?: number }) {
 
 /* ─── Main portal ──────────────────────────────────────────────────────────── */
 function CaptivePortal() {
-  const { user } = useSession();
   const { data: plans, isLoading } = usePlans();
   const [selected, setSelected] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -376,9 +375,10 @@ function CaptivePortal() {
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2">
           <ShieldCheck className="size-3.5 text-accent" />
           Payments secured via M-Pesa · PalNet never stores your PIN.
-          {!user && (
-            <><span> · </span><Link to="/admin/login" className="text-accent/60 hover:text-accent transition-colors text-xs">ISP Admin</Link></>
-          )}
+          <span> · </span>
+          <Link to="/admin/login" className="text-accent/50 hover:text-accent/80 transition-colors text-xs">
+            ISP Admin
+          </Link>
         </p>
       </main>
 
