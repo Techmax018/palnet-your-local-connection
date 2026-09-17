@@ -6,8 +6,7 @@ import {
   Activity, ArrowUpRight, ArrowRightLeft, Check, Circle, ClipboardCopy,
   CreditCard, Loader2, Pencil, Plus, Printer, RefreshCw, Router,
   Search, Ticket, TrendingUp, Tv, Users, Wifi, WifiOff, Zap,
-} from "lucide-react";
-import { toast } from "sonner";
+} from "lucide-react";import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -501,9 +500,11 @@ function AdminDashboard() {
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-wide text-white">ISP Control Center</h1>
+          <h1 className="text-xl font-bold tracking-wide text-white">
+            Network Overview & Control Center
+          </h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Live overview · routers · payments · sessions · vouchers · reconnect
+            Live network snapshot · auto-refreshes every 30s
           </p>
         </div>
         <button
@@ -517,27 +518,47 @@ function AdminDashboard() {
 
       {/* ── KPI Bar ── */}
       {statsLoading ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-xl admin-skeleton" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <KpiCard label="Today's Revenue" value={formatKes(stats?.todayRevenue ?? 0)}
-            sub="Completed M-Pesa payments" icon={TrendingUp} color="bg-emerald-500/15 text-emerald-400" />
-          <KpiCard label="Active Users" value={String(stats?.activeAll ?? 0)}
-            sub="Currently connected" icon={Users} color="bg-cyan-500/15 text-cyan-400" />
-          <KpiCard label="TV Subscribers" value={String(stats?.activeTv ?? 0)}
-            sub="Streaming now" icon={Tv} color="bg-violet-500/15 text-violet-400" />
-          <KpiCard label="Routers Online" value={`${stats?.onlineRouters ?? 0} / ${stats?.totalRouters ?? 0}`}
-            sub="Access points" icon={Router} color="bg-blue-500/15 text-blue-400" />
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <KpiCard
+            label="Today's Revenue (KES)"
+            value={String(stats?.todayRevenue ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+            sub="Completed M-Pesa payments"
+            icon={TrendingUp}
+            color="bg-emerald-500/15 text-emerald-400"
+          />
+          <KpiCard
+            label="Active Hotspot Users"
+            value={String(stats?.activeAll ?? 0)}
+            sub="Currently connected"
+            icon={Users}
+            color="bg-cyan-500/15 text-cyan-400"
+          />
+          <KpiCard
+            label="Active TV Subscribers"
+            value={String(stats?.activeTv ?? 0)}
+            sub="Streaming now"
+            icon={Tv}
+            color="bg-violet-500/15 text-violet-400"
+          />
+          <KpiCard
+            label="Total Routers Online"
+            value={`${stats?.onlineRouters ?? 0} / ${stats?.totalRouters ?? 0}`}
+            sub="Access points active"
+            icon={Router}
+            color="bg-blue-500/15 text-blue-400"
+          />
         </div>
       )}
 
-      {/* ── Router Registration & Status ── */}
+      {/* ── Router Status & Location Map ── */}
       <div>
         <SectionHead
-          title="Router / Access Point Registration"
-          sub="Register MikroTik or OpenWrt nodes. Click a row to edit."
+          title="Router Status & Location Map"
+          sub="MikroTik / OpenWrt access points — click a row to edit"
           action={
             <Button size="sm" className="admin-btn-primary h-8 gap-1.5 text-xs"
               onClick={() => setRouterModal({ open: true, editing: null })}>
@@ -555,12 +576,8 @@ function AdminDashboard() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-500">
-                    <th className="px-4 py-3 text-left font-medium">Name</th>
-                    <th className="px-4 py-3 text-left font-medium">IP : Port</th>
-                    <th className="px-4 py-3 text-left font-medium">Location</th>
-                    <th className="px-4 py-3 text-left font-medium">Status</th>
-                    <th className="px-4 py-3 text-left font-medium">Last Ping</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium">Router</th>
+                    <th className="px-4 py-3 text-right font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -568,28 +585,35 @@ function AdminDashboard() {
                     <tr key={r.id}
                       className="cursor-pointer hover:bg-slate-800/30 transition-colors"
                       onClick={() => setRouterModal({ open: true, editing: r })}>
-                      <td className="px-4 py-3 font-semibold text-white">{r.name}</td>
-                      <td className="px-4 py-3 font-mono text-slate-400">{r.ip_address}:{r.api_port}</td>
-                      <td className="px-4 py-3 text-slate-400">{r.location ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium
-                          ${r.status === "online"
-                            ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20"
-                            : "bg-red-500/15 text-red-400 ring-1 ring-red-500/20"}`}>
-                          {r.status === "online"
-                            ? <><Circle className="size-1.5 fill-emerald-400" /> Online</>
-                            : <><WifiOff className="size-3" /> Offline</>}
-                          {r.status === "online" && r.last_ping && (
-                            <span className="ml-0.5 text-emerald-500/70">
-                              · {Math.round((Date.now() - new Date(r.last_ping).getTime()) / 60000)}m
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-500">
-                        {r.last_ping
-                          ? new Date(r.last_ping).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })
-                          : "Never"}
+                        <div className="flex items-center gap-3">
+                          {/* Status dot */}
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${
+                            r.status === "online" ? "bg-emerald-500/15" : "bg-red-500/15"
+                          }`}>
+                            {r.status === "online"
+                              ? <Wifi className="size-3.5 text-emerald-400" />
+                              : <WifiOff className="size-3.5 text-red-400" />}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-white">
+                              {r.name}
+                              <span className="ml-2 font-mono font-normal text-slate-400">
+                                — {r.ip_address}
+                              </span>
+                              {r.location && (
+                                <span className="ml-1 text-slate-500">· {r.location}</span>
+                              )}
+                            </p>
+                            <p className={`text-xs mt-0.5 ${
+                              r.status === "online" ? "text-emerald-400" : "text-red-400"
+                            }`}>
+                              {r.status === "online"
+                                ? `Online · ${r.last_ping ? Math.round((Date.now() - new Date(r.last_ping).getTime()) / 86400000) + "d Up" : "Active"}`
+                                : `Offline — Last Ping: ${r.last_ping ? Math.round((Date.now() - new Date(r.last_ping).getTime()) / 60000) + "m ago" : "Never"}`}
+                            </p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
@@ -600,12 +624,16 @@ function AdminDashboard() {
                             {pingBusy === r.id
                               ? <Loader2 className="size-3 animate-spin" />
                               : <Activity className="size-3" />}
-                            Ping
+                            + Ping
                           </Button>
                           <Button variant="outline" size="sm"
-                            className="admin-btn-outline h-7 gap-1 text-xs"
+                            className="admin-btn-outline h-7 gap-1 text-xs">
+                            <CreditCard className="size-3" /> Logs
+                          </Button>
+                          <Button variant="outline" size="sm"
+                            className="h-7 gap-1 text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20"
                             onClick={() => setRouterModal({ open: true, editing: r })}>
-                            <Pencil className="size-3" /> Edit
+                            <RefreshCw className="size-3" /> Reboot API
                           </Button>
                         </div>
                       </td>
@@ -613,7 +641,7 @@ function AdminDashboard() {
                   ))}
                   {!routers?.length && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-slate-600">
+                      <td colSpan={2} className="px-4 py-10 text-center text-slate-600">
                         No routers registered yet — click "Add Router" to connect your first access point.
                       </td>
                     </tr>
@@ -625,12 +653,12 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Payments + Sessions ── */}
+      {/* ── Recent M-Pesa Transactions + Active Sessions ── */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {/* M-Pesa transactions */}
         <div>
           <SectionHead
-            title="M-Pesa Payment Messages"
+            title="Recent M-Pesa Transactions"
             sub="Live transaction log"
             action={
               <div className="relative w-44">
@@ -654,49 +682,30 @@ function AdminDashboard() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-500">
-                      <th className="px-3 py-2.5 text-left font-medium">Time</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Phone</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Timestamp</th>
                       <th className="px-3 py-2.5 text-left font-medium">Plan</th>
-                      <th className="px-3 py-2.5 text-right font-medium">KES</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Customer Number</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Amount (KES)</th>
                       <th className="px-3 py-2.5 text-left font-medium">Status</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Ref</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Action</th>
+                      <th className="px-3 py-2.5 text-left font-medium">M-Pesa Ref</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
                     {(transactions ?? []).map((tx) => (
                       <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
                         <td className="px-3 py-2.5 font-mono tabular-nums text-slate-500 whitespace-nowrap">
-                          {new Date(tx.created_at).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(tx.created_at).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })}
                         </td>
-                        <td className="px-3 py-2.5 font-mono text-white">{tx.phone_number ?? "—"}</td>
                         <td className="px-3 py-2.5 max-w-[90px] truncate text-slate-300">
                           {tx.internet_plans?.name ?? "—"}
                         </td>
+                        <td className="px-3 py-2.5 font-mono text-white">{tx.phone_number ?? "—"}</td>
                         <td className="px-3 py-2.5 text-right font-bold text-emerald-400">
                           {formatKes(tx.amount_kes)}
                         </td>
                         <td className="px-3 py-2.5"><TxStatusBadge status={tx.status} /></td>
-                        <td className="px-3 py-2.5 max-w-[70px] truncate font-mono text-slate-600">
+                        <td className="px-3 py-2.5 max-w-[80px] truncate font-mono text-slate-600">
                           {tx.transaction_reference ?? "—"}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex justify-end">
-                            {tx.status === "completed" && tx.transaction_reference && (
-                              <Button
-                                size="sm"
-                                className="h-6 gap-1 px-2 text-xs bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/25 hover:text-cyan-300"
-                                disabled={connectBusy === tx.transaction_reference}
-                                onClick={() => handleConnect(tx.transaction_reference)}
-                                title="Reconnect session using this payment reference"
-                              >
-                                {connectBusy === tx.transaction_reference
-                                  ? <Loader2 className="size-3 animate-spin" />
-                                  : <Wifi className="size-3" />}
-                                Connect
-                              </Button>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     ))}
@@ -720,8 +729,8 @@ function AdminDashboard() {
         {/* Active sessions */}
         <div>
           <SectionHead
-            title="Active Sessions"
-            sub={`${sessions?.length ?? 0} connected`}
+            title="Active Customer Sessions"
+            sub={`${sessions?.length ?? 0} connected devices`}
             action={
               <div className="relative w-44">
                 <Search className="absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-slate-500" />
@@ -744,11 +753,11 @@ function AdminDashboard() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-500">
-                      <th className="px-3 py-2.5 text-left font-medium">IP / MAC</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Plan</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Expires</th>
-                      <th className="px-3 py-2.5 text-left font-medium">Router</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Kick</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Device IP/MAC</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Plan Active</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Expires At</th>
+                      <th className="px-3 py-2.5 text-left font-medium">Router Node</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Terminate</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -770,8 +779,8 @@ function AdminDashboard() {
                               {s.internet_plans?.name ?? "—"}
                             </span>
                           </td>
-                          <td className={`px-3 py-2.5 font-mono tabular-nums ${remaining < 300_000 ? "text-red-400" : "text-slate-400"}`}>
-                            {formatCountdown(remaining)}
+                          <td className={`px-3 py-2.5 font-mono tabular-nums text-xs ${remaining < 300_000 ? "text-red-400" : "text-slate-400"}`}>
+                            {new Date(s.end_time).toLocaleDateString("en-KE")}
                           </td>
                           <td className="px-3 py-2.5 text-slate-500">
                             {s.routers?.name ?? "Auto"}
@@ -787,7 +796,7 @@ function AdminDashboard() {
                                 {kickBusy === s.id
                                   ? <Loader2 className="size-3 animate-spin" />
                                   : <Zap className="size-3" />}
-                                Kick
+                                Instant Terminate Session
                               </Button>
                             </div>
                           </td>
