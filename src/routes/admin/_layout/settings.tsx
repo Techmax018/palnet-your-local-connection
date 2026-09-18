@@ -54,7 +54,7 @@ function useNetworkSettings() {
         const map: Record<string, string> = {};
         if (!data) return map;
         map["portal_name"] = data.portal_name ?? "PalNet Wi-Fi";
-        map["support_phone"] = data.support_phone ?? "";
+        map["support_phone"] = data.support_phone ?? "0703161031";
         map["wifi_ssid"] = data.wifi_ssid ?? "PalNet-WiFi";
         map["anti_tethering_enabled"] = data.anti_tethering_enabled ? "true" : "false";
         map["maintenance_mode"] = data.maintenance_mode ? "true" : "false";
