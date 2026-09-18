@@ -195,7 +195,7 @@ function Sidebar({
             const isActive =
               exact
                 ? pathname === to
-                : pathname.startsWith(to) && to !== "/admin";
+                : pathname.startsWith(to) && (to as string) !== "/admin";
 
             return (
               <Link
@@ -601,7 +601,7 @@ function AdminLayout() {
 
         {/* ── Page content ── */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <Outlet context={{ globalSearch: searchValue }} />
+          <Outlet />
         </main>
       </div>
     </div>

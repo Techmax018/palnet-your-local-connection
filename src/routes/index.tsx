@@ -186,7 +186,7 @@ function VoucherBar() {
 }
 
 /* ─── Plan cards ───────────────────────────────────────────────────────────── */
-function HomePlanCard({ plan, badge, onSelect }: { plan: Plan; badge?: string; onSelect: (p: Plan) => void }) {
+function HomePlanCard({ plan, badge, onSelect }: { plan: Plan; badge?: string | undefined; onSelect: (p: Plan) => void }) {
   return (
     <div className="surface-panel relative overflow-hidden p-3 gap-0">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
