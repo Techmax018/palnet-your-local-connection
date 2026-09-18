@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Printer, Ticket } from "lucide-react";
+import { Loader2, Printer, Ticket, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { generateVouchers } from "@/lib/palnet.functions";
+import { generateVouchers, deleteVoucher } from "@/lib/palnet.functions";
 import { formatKes, planDurationLabel, type Plan } from "@/lib/palnet";
 
 export const Route = createFileRoute("/admin/_layout/vouchers")({
@@ -21,6 +21,8 @@ export const Route = createFileRoute("/admin/_layout/vouchers")({
 function AdminVouchers() {
   const queryClient = useQueryClient();
   const generate = useServerFn(generateVouchers);
+  const delFn = useServerFn(deleteVoucher);
+  const [busyDelete, setBusyDelete] = useState<string | null>(null);
   const [planId, setPlanId] = useState("");
   const [quantity, setQuantity] = useState(10);
   const [busy, setBusy] = useState(false);
@@ -114,11 +116,24 @@ function AdminVouchers() {
           </div>
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 print:grid-cols-4">
             {batch.map((code) => (
-              <div key={code} className="flex flex-col items-center rounded-lg border border-slate-700/60 bg-slate-900/80 p-2.5 print:border-gray-300">
-                <p className="text-xs text-slate-500 mb-0.5">PalNet</p>
-                <p className="font-mono text-sm font-bold tracking-[0.25em] text-white">{code}</p>
-                {selectedPlan && <p className="text-xs text-emerald-400 mt-0.5">{formatKes(selectedPlan.price_kes)}</p>}
-              </div>
+                <div key={code} className="flex flex-col items-center rounded-lg border border-slate-700/60 bg-slate-900/80 p-2.5 print:border-gray-300">
+                  <div className="w-full flex items-start justify-end">
+                    <button className="text-red-400 hover:text-red-300 text-xs" disabled={busyDelete === code} onClick={async () => {
+                      if (!confirm(`Delete voucher ${code}? This cannot be undone.`)) return;
+                      setBusyDelete(code);
+                      try {
+                        const res = await delFn({ data: { code } });
+                        toast[res.ok ? "success" : "error"](res.message);
+                        if (res.ok) setBatch((b) => b.filter((c) => c !== code));
+                        await queryClient.invalidateQueries({ queryKey: ["admin-vouchers"] });
+                      } catch { toast.error("Failed to delete voucher"); }
+                      finally { setBusyDelete(null); }
+                    }}>Delete</button>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-0.5">PalNet</p>
+                  <p className="font-mono text-sm font-bold tracking-[0.25em] text-white">{code}</p>
+                  {selectedPlan && <p className="text-xs text-emerald-400 mt-0.5">{formatKes(selectedPlan.price_kes)}</p>}
+                </div>
             ))}
           </div>
         </div>
@@ -143,20 +158,36 @@ function AdminVouchers() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {(recent ?? []).map((v: any) => (
-                    <tr key={v.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold tracking-[0.25em] text-white">{v.code}</td>
-                      <td className="px-4 py-3 text-slate-400">{v.internet_plans?.name ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          v.status === "unused" ? "bg-emerald-500/15 text-emerald-400" :
-                          v.status === "active" ? "bg-cyan-500/15 text-cyan-400" :
-                          "bg-slate-700 text-slate-400"
-                        }`}>
-                          {v.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">{new Date(v.created_at).toLocaleDateString("en-KE")}</td>
-                    </tr>
+                        <tr key={v.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-mono font-bold tracking-[0.25em] text-white">{v.code}</td>
+                          <td className="px-4 py-3 text-slate-400">{v.internet_plans?.name ?? "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              v.status === "unused" ? "bg-emerald-500/15 text-emerald-400" :
+                              v.status === "active" ? "bg-cyan-500/15 text-cyan-400" :
+                              "bg-slate-700 text-slate-400"
+                            }`}>
+                              {v.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{new Date(v.created_at).toLocaleDateString("en-KE")}</td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button size="sm" variant="destructive" className="h-7 text-xs" disabled={busyDelete === v.id} onClick={async () => {
+                                if (!confirm(`Delete voucher ${v.code}? This cannot be undone.`)) return;
+                                setBusyDelete(v.id);
+                                try {
+                                  const res = await delFn({ data: { id: v.id } });
+                                  toast[res.ok ? "success" : "error"](res.message);
+                                  if (res.ok) await queryClient.invalidateQueries({ queryKey: ["admin-vouchers"] });
+                                } catch { toast.error("Failed to delete voucher"); }
+                                finally { setBusyDelete(null); }
+                              }}>
+                                <Trash2 className="size-3" /> Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
                   ))}
                   {!recent?.length && (
                     <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600">No vouchers generated yet</td></tr>

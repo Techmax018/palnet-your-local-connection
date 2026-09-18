@@ -292,6 +292,24 @@ export const testRouterConnection = createServerFn({ method: "POST" })
       online: probe.online,
       message: probe.online ? "Router reachable" : "Router did not respond",
     };
+
+    /** Admin: fetch recent logs from a router. */
+    export const fetchRouterLogs = createServerFn({ method: "POST" })
+      .middleware([requireSupabaseAuth])
+      .inputValidator((data: unknown) => z.object({ routerId: z.string().uuid() }).parse(data))
+      .handler(async ({ data, context }) => {
+        await assertAdmin(context);
+        const { data: router } = await context.supabase
+          .from("routers")
+          .select("id, ip_address, api_port")
+          .eq("id", data.routerId)
+          .maybeSingle();
+        if (!router) return { ok: false as const, logs: [], message: "Router not found" };
+
+        const { fetchRouterLogs: fetchLogs } = await import("./routerService");
+        const result = await fetchLogs(router as any);
+        return { ok: result.ok, logs: result.logs, message: result.message ?? (result.ok ? "Logs fetched" : "Failed") };
+      });
   });
 
 const routerSchema = z.object({
@@ -319,6 +337,28 @@ export const saveRouter = createServerFn({ method: "POST" })
       : await context.supabase.from("routers").insert(payload);
     if (error) return { ok: false as const, message: error.message };
     return { ok: true as const, message: data.id ? "Router updated" : "Router added" };
+  });
+
+/** Admin: delete a router if it is not referenced by active subscriptions. */
+export const deleteRouter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Prevent deleting routers that are referenced by subscriptions
+    const { count } = await supabaseAdmin
+      .from("user_subscriptions")
+      .select("id", { head: true })
+      .eq("router_id", data.id as string);
+    if ((count ?? 0) > 0) {
+      return { ok: false as const, message: "Router has subscriptions assigned — unassign before deleting." };
+    }
+
+    const { error } = await supabaseAdmin.from("routers").delete().eq("id", data.id as string);
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const, message: "Router deleted" };
   });
 
 const planSchema = z.object({
@@ -387,6 +427,33 @@ export const generateVouchers = createServerFn({ method: "POST" })
       message: `${inserted?.length ?? 0} scratch cards generated`,
       codes: (inserted ?? []).map((row: { code: string }) => row.code),
     };
+  });
+
+/** Admin: delete a voucher by id or code (only if unused). */
+export const deleteVoucher = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({ id: z.string().uuid().optional(), code: z.string().trim().min(4).max(20).optional() })
+      .refine((v) => !!v.id || !!v.code, { message: "Provide id or code" })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const query = data.id
+      ? supabaseAdmin.from("vouchers").select("id, code, status").eq("id", data.id).maybeSingle()
+      : supabaseAdmin.from("vouchers").select("id, code, status").eq("code", data.code).maybeSingle();
+
+    const { data: row, error: selErr } = await query;
+    if (selErr) return { ok: false as const, message: selErr.message };
+    if (!row) return { ok: false as const, message: "Voucher not found" };
+    if (row.status !== "unused") return { ok: false as const, message: "Only unused vouchers can be deleted" };
+
+    const { error } = await supabaseAdmin.from("vouchers").delete().eq("id", row.id);
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const, message: "Voucher deleted" };
   });
 
 /* -------- Logged-in user convenience wrappers (kept for compatibility) ---- */

@@ -93,6 +93,26 @@ export async function pingRouter(target: RouterTarget): Promise<{ online: boolea
   }
 }
 
+/** Fetch recent router logs (MikroTik REST `/log` endpoint). */
+export async function fetchRouterLogs(target: RouterTarget): Promise<{ ok: boolean; simulated: boolean; logs: string[]; message?: string }> {
+  const url = `${routerBaseUrl(target)}/log`;
+  try {
+    const response = await fetch(url, { headers: authHeader(), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!response.ok) return { ok: false, simulated: false, logs: [], message: `Router responded ${response.status}` };
+    const data = await response.json().catch(() => null);
+    // MikroTik may return array of objects; stringify entries if so
+    if (Array.isArray(data)) {
+      const lines = data.map((d: any) => (typeof d === 'string' ? d : JSON.stringify(d)));
+      return { ok: true, simulated: false, logs: lines };
+    }
+    const text = typeof data === 'string' ? data : JSON.stringify(data);
+    return { ok: true, simulated: false, logs: [text] };
+  } catch (error) {
+    console.info('[routerService] fetch logs simulated', { url, error: String(error) });
+    return { ok: true, simulated: true, logs: ['Router unreachable — logs unavailable (simulated)'], message: 'Simulated' };
+  }
+}
+
 export type MpesaCallbackPayload = {
   Body?: {
     stkCallback?: {

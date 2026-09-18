@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Loader2, RefreshCw, Pencil, Circle, Activity } from "lucide-react";
+import { Plus, Loader2, RefreshCw, Pencil, Circle, Activity, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { saveRouter, testRouterConnection } from "@/lib/palnet.functions";
+import { saveRouter, testRouterConnection, deleteRouter, fetchRouterLogs } from "@/lib/palnet.functions";
 
 export const Route = createFileRoute("/admin/_layout/routers")({
   head: () => ({ meta: [{ title: "PalNet Admin — Routers" }] }),
@@ -28,6 +28,11 @@ function AdminRouters() {
   const queryClient = useQueryClient();
   const save = useServerFn(saveRouter);
   const pingFn = useServerFn(testRouterConnection);
+  const delFn = useServerFn(deleteRouter);
+  const logsFn = useServerFn(fetchRouterLogs);
+  const [logDialogOpen, setLogDialogOpen] = useState(false);
+  const [logTarget, setLogTarget] = useState<Router | null>(null);
+  const [logs, setLogs] = useState<string[] | null>(null);
   const [editing, setEditing] = useState<Router | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -135,8 +140,31 @@ function AdminRouters() {
                           {busy === r.id ? <Loader2 className="size-3 animate-spin" /> : <Activity className="size-3" />}
                           Ping
                         </Button>
-                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs">
+                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" disabled={busy === r.id} onClick={async () => {
+                          setLogTarget(r);
+                          setLogDialogOpen(true);
+                          setLogs(null);
+                          try {
+                            const res = await logsFn({ data: { routerId: r.id } });
+                            if (res.ok) setLogs(res.logs ?? []);
+                            else setLogs([res.message ?? "Failed to fetch logs"]);
+                          } catch {
+                            setLogs(["Failed to fetch logs"]);
+                          }
+                        }}>
                           <Activity className="size-3" /> Logs
+                        </Button>
+                        <Button variant="destructive" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" disabled={busy === r.id} onClick={async () => {
+                          if (!confirm(`Delete router "${r.name}"? This cannot be undone.`)) return;
+                          setBusy(r.id);
+                          try {
+                            const res = await delFn({ data: { id: r.id } });
+                            toast[res.ok ? "success" : "error"](res.message);
+                            if (res.ok) await queryClient.invalidateQueries({ queryKey: ["admin-routers"] });
+                          } catch { toast.error("Failed to delete router"); }
+                          finally { setBusy(null); }
+                        }}>
+                          <Trash2 className="size-3" /> Delete
                         </Button>
                         <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" onClick={() => openEdit(r)}>
                           <Pencil className="size-3" /> Edit
@@ -184,6 +212,37 @@ function AdminRouters() {
               {busy === "save" && <Loader2 className="animate-spin size-4" />}
               {editing ? "Save Changes" : "Add Router"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={logDialogOpen} onOpenChange={(o) => !o && setLogDialogOpen(false)}>
+        <DialogContent className="admin-dialog sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white text-sm font-bold">Router Logs</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="rounded-lg bg-slate-900/60 border border-slate-800/50 p-3 h-64 overflow-auto font-mono text-xs"> 
+              {logs === null ? (
+                <div className="flex items-center gap-2 text-slate-500"><Loader2 className="size-4 animate-spin" /> Loading logs…</div>
+              ) : logs.length === 0 ? (
+                <div className="text-slate-500">No logs available</div>
+              ) : (
+                logs.map((l, i) => <div key={i} className="text-slate-300">{l}</div>)
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button className="admin-btn-primary" onClick={async () => {
+                if (!logTarget) return;
+                setLogs(null);
+                try {
+                  const res = await logsFn({ data: { routerId: logTarget.id } });
+                  if (res.ok) setLogs(res.logs ?? []);
+                  else setLogs([res.message ?? "Failed to fetch logs"]);
+                } catch { setLogs(["Failed to fetch logs"]); }
+              }}>Refresh</Button>
+              <Button variant="outline" onClick={() => setLogDialogOpen(false)}>Close</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
