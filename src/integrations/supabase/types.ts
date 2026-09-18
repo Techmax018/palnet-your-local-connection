@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      installation_requests: {
+        Row: {
+          created_at: string
+          full_name: string
+          house_number: string
+          id: string
+          phone_number: string
+          preferred_plan_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          house_number: string
+          id?: string
+          phone_number: string
+          preferred_plan_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          house_number?: string
+          id?: string
+          phone_number?: string
+          preferred_plan_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installation_requests_preferred_plan_id_fkey"
+            columns: ["preferred_plan_id"]
+            isOneToOne: false
+            referencedRelation: "internet_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internet_plans: {
         Row: {
           category: string
@@ -50,6 +88,27 @@ export type Database = {
           name?: string
           price_kes?: number
           speed_limit_mbps?: number
+        }
+        Relationships: []
+      }
+      network_settings: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: string
         }
         Relationships: []
       }
@@ -198,12 +257,17 @@ export type Database = {
           end_time: string
           id: string
           ip_address: string | null
+          last_reconnect_at: string | null
           mac_address: string | null
           phone_number: string | null
           plan_id: string
+          previous_mac_address: string | null
           router_id: string | null
           start_time: string
           status: string
+          suspicious_tethering: boolean
+          tether_attempts_count: number
+          user_agent: string | null
           user_id: string | null
         }
         Insert: {
@@ -212,12 +276,17 @@ export type Database = {
           end_time: string
           id?: string
           ip_address?: string | null
+          last_reconnect_at?: string | null
           mac_address?: string | null
           phone_number?: string | null
           plan_id: string
+          previous_mac_address?: string | null
           router_id?: string | null
           start_time?: string
           status?: string
+          suspicious_tethering?: boolean
+          tether_attempts_count?: number
+          user_agent?: string | null
           user_id?: string | null
         }
         Update: {
@@ -226,12 +295,17 @@ export type Database = {
           end_time?: string
           id?: string
           ip_address?: string | null
+          last_reconnect_at?: string | null
           mac_address?: string | null
           phone_number?: string | null
           plan_id?: string
+          previous_mac_address?: string | null
           router_id?: string | null
           start_time?: string
           status?: string
+          suspicious_tethering?: boolean
+          tether_attempts_count?: number
+          user_agent?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -267,6 +341,7 @@ export type Database = {
           id: string
           plan_id: string
           status: string
+          subscription_id: string | null
           used_by: string | null
         }
         Insert: {
@@ -277,6 +352,7 @@ export type Database = {
           id?: string
           plan_id: string
           status?: string
+          subscription_id?: string | null
           used_by?: string | null
         }
         Update: {
@@ -287,6 +363,7 @@ export type Database = {
           id?: string
           plan_id?: string
           status?: string
+          subscription_id?: string | null
           used_by?: string | null
         }
         Relationships: [
@@ -295,6 +372,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "internet_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vouchers_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
             referencedColumns: ["id"]
           },
           {
