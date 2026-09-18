@@ -91,24 +91,45 @@ export type Database = {
         }
         Relationships: []
       }
-      network_settings: {
+      system_settings: {
         Row: {
+          id: boolean
+          portal_name: string
+          support_phone: string | null
+          wifi_ssid: string
+          anti_tethering_enabled: boolean
+          maintenance_mode: boolean
+          guest_checkout_enabled: boolean
+          alert_router_offline: boolean
+          alert_tethering: boolean
           created_at: string
-          key: string
           updated_at: string
-          value: string
         }
         Insert: {
+          id?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          wifi_ssid?: string
+          anti_tethering_enabled?: boolean
+          maintenance_mode?: boolean
+          guest_checkout_enabled?: boolean
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
           created_at?: string
-          key: string
           updated_at?: string
-          value?: string
         }
         Update: {
+          id?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          wifi_ssid?: string
+          anti_tethering_enabled?: boolean
+          maintenance_mode?: boolean
+          guest_checkout_enabled?: boolean
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
           created_at?: string
-          key?: string
           updated_at?: string
-          value?: string
         }
         Relationships: []
       }

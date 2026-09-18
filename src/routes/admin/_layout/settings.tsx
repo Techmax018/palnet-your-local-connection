@@ -50,9 +50,15 @@ function useNetworkSettings() {
     queryKey: ["network-settings-all"],
     queryFn: async () => {
       try {
-        const { data } = await supabase.from("network_settings").select("key, value");
+        const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
         const map: Record<string, string> = {};
-        (data ?? []).forEach((r: { key: string; value: string }) => { map[r.key] = r.value; });
+        if (!data) return map;
+        map["portal_name"] = data.portal_name ?? "PalNet Wi-Fi";
+        map["support_phone"] = data.support_phone ?? "";
+        map["wifi_ssid"] = data.wifi_ssid ?? "PalNet-WiFi";
+        map["anti_tethering_enabled"] = data.anti_tethering_enabled ? "true" : "false";
+        map["maintenance_mode"] = data.maintenance_mode ? "true" : "false";
+        map["guest_checkout_enabled"] = data.guest_checkout_enabled ? "true" : "false";
         return map;
       } catch { return {} as Record<string, string>; }
     },

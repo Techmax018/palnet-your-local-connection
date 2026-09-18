@@ -472,12 +472,10 @@ function AdminPlans() {
   });
 
   const { data: netSettings } = useQuery({
-    queryKey: ["network-settings-all"],
+    queryKey: ["system-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("network_settings").select("key, value");
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((r: { key: string; value: string }) => { map[r.key] = r.value; });
-      return map;
+      const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
+      return data ?? null;
     },
   });
 

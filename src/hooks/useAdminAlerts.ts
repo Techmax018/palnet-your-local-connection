@@ -34,9 +34,23 @@ export function useNetworkSettings() {
   return useQuery({
     queryKey: ["network-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("network_settings").select("key, value");
+      // Single-row system_settings table - map typed columns back to string keys
+      const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
       const map: Record<string, string> = {};
-      for (const row of data ?? []) map[row.key] = row.value;
+      if (!data) return map;
+      map["portal_name"] = data.portal_name ?? "";
+      map["support_phone"] = data.support_phone ?? "";
+      map["wifi_ssid"] = data.wifi_ssid ?? "";
+      map["anti_tethering_enabled"] = data.anti_tethering_enabled ? "true" : "false";
+      map["maintenance_mode"] = data.maintenance_mode ? "true" : "false";
+      map["guest_checkout_enabled"] = data.guest_checkout_enabled ? "true" : "false";
+      map["alert_router_offline"] = data.alert_router_offline ? "true" : "false";
+      map["alert_tethering"] = data.alert_tethering ? "true" : "false";
+      // Backwards-compatible alert keys with sensible defaults
+      map["alert_voucher_low_threshold"] = map["alert_voucher_low_threshold"] ?? "10";
+      map["alert_expiry_warning_minutes"] = map["alert_expiry_warning_minutes"] ?? "15";
+      map["alert_router_offline_enabled"] = data.alert_router_offline ? "true" : "false";
+      map["alert_failed_payment_enabled"] = map["alert_failed_payment_enabled"] ?? "true";
       return map;
     },
     staleTime: 30_000,
