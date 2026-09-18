@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { updateNetworkSetting } from "@/lib/palnet.functions";
+import { updateSystemSettings } from "@/lib/palnet.functions";
 
 export const Route = createFileRoute("/admin/_layout/settings")({
   head: () => ({ meta: [{ title: "PalNet Admin — Settings" }] }),
@@ -120,7 +120,7 @@ function AdminSettings() {
   const queryClient = useQueryClient();
   const { data: health, isLoading: healthLoading } = useSystemHealth();
   const { data: settings, isLoading: settingsLoading } = useNetworkSettings();
-  const saveSetting = useServerFn(updateNetworkSetting);
+  const saveSystem = useServerFn(updateSystemSettings);
 
   // Local editable fields
   const [portalName, setPortalName]     = useState("");
@@ -141,7 +141,13 @@ function AdminSettings() {
   async function toggle(key: string, current: boolean) {
     setToggleBusy(key);
     try {
-      const r = await saveSetting({ data: { key, value: String(!current) } });
+      const payload: any = {};
+      if (key === "anti_tethering_enabled") payload.anti_tethering_enabled = !current;
+      if (key === "maintenance_mode") payload.maintenance_mode = !current;
+      if (key === "guest_checkout_enabled") payload.guest_checkout_enabled = !current;
+      if (key === "alert_router_offline") payload.alert_router_offline = !current;
+      if (key === "alert_tethering") payload.alert_tethering = !current;
+      const r = await saveSystem({ data: payload });
       toast[r.ok ? "success" : "error"](r.message);
       await queryClient.invalidateQueries({ queryKey: ["network-settings-all"] });
       await queryClient.invalidateQueries({ queryKey: ["anti-tethering-setting"] });
@@ -152,12 +158,8 @@ function AdminSettings() {
   async function savePortalSettings() {
     setSavingBusy(true);
     try {
-      await Promise.all([
-        saveSetting({ data: { key: "portal_name",   value: portalName } }),
-        saveSetting({ data: { key: "support_phone", value: supportPhone } }),
-        saveSetting({ data: { key: "wifi_ssid",     value: wifiSsid } }),
-      ]);
-      toast.success("Portal settings saved");
+      const r = await saveSystem({ data: { portal_name: portalName, support_phone: supportPhone || null, wifi_ssid: wifiSsid } });
+      toast[r.ok ? "success" : "error"](r.message);
       await queryClient.invalidateQueries({ queryKey: ["network-settings-all"] });
     } catch { toast.error("Failed to save portal settings"); }
     finally { setSavingBusy(false); }

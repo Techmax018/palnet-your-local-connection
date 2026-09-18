@@ -894,6 +894,47 @@ export const updateNetworkSetting = createServerFn({ method: "POST" })
     }
   });
 
+/** Admin: update the single-row system_settings record. */
+export const updateSystemSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      portal_name: z.string().max(120).optional(),
+      support_phone: z.string().max(24).optional().nullable(),
+      wifi_ssid: z.string().max(80).optional(),
+      anti_tethering_enabled: z.boolean().optional(),
+      maintenance_mode: z.boolean().optional(),
+      guest_checkout_enabled: z.boolean().optional(),
+      alert_router_offline: z.boolean().optional(),
+      alert_tethering: z.boolean().optional(),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    try {
+      await assertAdmin(context);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const payload: any = { id: true, updated_at: new Date().toISOString() };
+      if (data.portal_name !== undefined) payload.portal_name = data.portal_name;
+      if (data.support_phone !== undefined) payload.support_phone = data.support_phone;
+      if (data.wifi_ssid !== undefined) payload.wifi_ssid = data.wifi_ssid;
+      if (data.anti_tethering_enabled !== undefined) payload.anti_tethering_enabled = data.anti_tethering_enabled;
+      if (data.maintenance_mode !== undefined) payload.maintenance_mode = data.maintenance_mode;
+      if (data.guest_checkout_enabled !== undefined) payload.guest_checkout_enabled = data.guest_checkout_enabled;
+      if (data.alert_router_offline !== undefined) payload.alert_router_offline = data.alert_router_offline;
+      if (data.alert_tethering !== undefined) payload.alert_tethering = data.alert_tethering;
+
+      const { error } = await supabaseAdmin
+        .from("system_settings")
+        .upsert(payload, { onConflict: "id" });
+      if (error) throw error;
+      return { ok: true as const, message: "Settings updated" };
+    } catch (err: any) {
+      console.error("updateSystemSettings error:", err);
+      return { ok: false as const, message: err?.message ?? String(err) };
+    }
+  });
+
 /* ─── Admin: apply / remove anti-tethering rules on all online routers ─── */
 
 export const applyAntiTetheringToAllRouters = createServerFn({ method: "POST" })
