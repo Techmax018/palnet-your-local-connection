@@ -345,21 +345,26 @@ export const deleteRouter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    try {
+      await assertAdmin(context);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Prevent deleting routers that are referenced by subscriptions
-    const { count } = await supabaseAdmin
-      .from("user_subscriptions")
-      .select("id", { head: true })
-      .eq("router_id", data.id as string);
-    if ((count ?? 0) > 0) {
-      return { ok: false as const, message: "Router has subscriptions assigned — unassign before deleting." };
+      // Prevent deleting routers that are referenced by subscriptions
+      const { count } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("id", { head: true })
+        .eq("router_id", data.id as string);
+      if ((count ?? 0) > 0) {
+        return { ok: false as const, message: "Router has subscriptions assigned — unassign before deleting." };
+      }
+
+      const { error } = await supabaseAdmin.from("routers").delete().eq("id", data.id as string);
+      if (error) return { ok: false as const, message: error.message };
+      return { ok: true as const, message: "Router deleted" };
+    } catch (err: any) {
+      console.error('[deleteRouter] error', err?.message ?? String(err));
+      return { ok: false as const, message: err?.message ? String(err.message) : 'Failed to delete router' };
     }
-
-    const { error } = await supabaseAdmin.from("routers").delete().eq("id", data.id as string);
-    if (error) return { ok: false as const, message: error.message };
-    return { ok: true as const, message: "Router deleted" };
   });
 
 const planSchema = z.object({
