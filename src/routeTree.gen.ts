@@ -12,16 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ReconnectRouteImport } from './routes/reconnect'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminLayoutRouteImport } from './routes/admin/_layout'
-import { Route as AdminAntiTetheringRouteImport } from './routes/admin/anti-tethering'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
-import { Route as AdminPlansRouteImport } from './routes/admin/plans'
-import { Route as AdminRoutersRouteImport } from './routes/admin/routers'
-import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
-import { Route as AdminTransactionsRouteImport } from './routes/admin/transactions'
-import { Route as AdminVouchersRouteImport } from './routes/admin/vouchers'
+import { Route as AdminLayoutIndexRouteImport } from './routes/admin/_layout/index'
+import { Route as AdminLayoutAntiTetheringRouteImport } from './routes/admin/_layout/anti-tethering'
+import { Route as AdminLayoutPlansRouteImport } from './routes/admin/_layout/plans'
+import { Route as AdminLayoutRoutersRouteImport } from './routes/admin/_layout/routers'
+import { Route as AdminLayoutSessionsRouteImport } from './routes/admin/_layout/sessions'
+import { Route as AdminLayoutSettingsRouteImport } from './routes/admin/_layout/settings'
+import { Route as AdminLayoutTransactionsRouteImport } from './routes/admin/_layout/transactions'
+import { Route as AdminLayoutVouchersRouteImport } from './routes/admin/_layout/vouchers'
 import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
 
 const IndexRoute = IndexRouteImport.update({
@@ -39,19 +39,9 @@ const ReconnectRoute = ReconnectRouteImport.update({
   path: '/reconnect',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminLayoutRoute = AdminLayoutRouteImport.update({
   id: '/admin/_layout',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminAntiTetheringRoute = AdminAntiTetheringRouteImport.update({
-  id: '/admin/anti-tethering',
-  path: '/admin/anti-tethering',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -59,35 +49,46 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPlansRoute = AdminPlansRouteImport.update({
-  id: '/admin/plans',
-  path: '/admin/plans',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutIndexRoute = AdminLayoutIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminRoutersRoute = AdminRoutersRouteImport.update({
-  id: '/admin/routers',
-  path: '/admin/routers',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutAntiTetheringRoute =
+  AdminLayoutAntiTetheringRouteImport.update({
+    id: '/anti-tethering',
+    path: '/anti-tethering',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const AdminLayoutPlansRoute = AdminLayoutPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminSessionsRoute = AdminSessionsRouteImport.update({
-  id: '/admin/sessions',
-  path: '/admin/sessions',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutRoutersRoute = AdminLayoutRoutersRouteImport.update({
+  id: '/routers',
+  path: '/routers',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/admin/settings',
-  path: '/admin/settings',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutSessionsRoute = AdminLayoutSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminTransactionsRoute = AdminTransactionsRouteImport.update({
-  id: '/admin/transactions',
-  path: '/admin/transactions',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutSettingsRoute = AdminLayoutSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
-const AdminVouchersRoute = AdminVouchersRouteImport.update({
-  id: '/admin/vouchers',
-  path: '/admin/vouchers',
-  getParentRoute: () => rootRouteImport,
+const AdminLayoutTransactionsRoute = AdminLayoutTransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
+const AdminLayoutVouchersRoute = AdminLayoutVouchersRouteImport.update({
+  id: '/vouchers',
+  path: '/vouchers',
+  getParentRoute: () => AdminLayoutRoute,
 } as any)
 const ApiPublicMpesaCallbackRoute = ApiPublicMpesaCallbackRouteImport.update({
   id: '/api/public/mpesa/callback',
@@ -99,31 +100,31 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reconnect': typeof ReconnectRoute
-  '/admin': typeof AdminLayoutRoute
-  '/admin/anti-tethering': typeof AdminAntiTetheringRoute
+  '/admin': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
-  '/admin/plans': typeof AdminPlansRoute
-  '/admin/routers': typeof AdminRoutersRoute
-  '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/transactions': typeof AdminTransactionsRoute
-  '/admin/vouchers': typeof AdminVouchersRoute
-  '/admin/': typeof AdminIndexRoute
+  '/admin/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/plans': typeof AdminLayoutPlansRoute
+  '/admin/routers': typeof AdminLayoutRoutersRoute
+  '/admin/sessions': typeof AdminLayoutSessionsRoute
+  '/admin/settings': typeof AdminLayoutSettingsRoute
+  '/admin/transactions': typeof AdminLayoutTransactionsRoute
+  '/admin/vouchers': typeof AdminLayoutVouchersRoute
+  '/admin/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reconnect': typeof ReconnectRoute
-  '/admin': typeof AdminIndexRoute
-  '/admin/anti-tethering': typeof AdminAntiTetheringRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/plans': typeof AdminPlansRoute
-  '/admin/routers': typeof AdminRoutersRoute
-  '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/transactions': typeof AdminTransactionsRoute
-  '/admin/vouchers': typeof AdminVouchersRoute
+  '/admin/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/plans': typeof AdminLayoutPlansRoute
+  '/admin/routers': typeof AdminLayoutRoutersRoute
+  '/admin/sessions': typeof AdminLayoutSessionsRoute
+  '/admin/settings': typeof AdminLayoutSettingsRoute
+  '/admin/transactions': typeof AdminLayoutTransactionsRoute
+  '/admin/vouchers': typeof AdminLayoutVouchersRoute
+  '/admin': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRoutesById {
@@ -131,16 +132,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reconnect': typeof ReconnectRoute
-  '/admin/_layout': typeof AdminLayoutRoute
-  '/admin/anti-tethering': typeof AdminAntiTetheringRoute
+  '/admin/_layout': typeof AdminLayoutRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
-  '/admin/plans': typeof AdminPlansRoute
-  '/admin/routers': typeof AdminRoutersRoute
-  '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/transactions': typeof AdminTransactionsRoute
-  '/admin/vouchers': typeof AdminVouchersRoute
-  '/admin/': typeof AdminIndexRoute
+  '/admin/_layout/anti-tethering': typeof AdminLayoutAntiTetheringRoute
+  '/admin/_layout/plans': typeof AdminLayoutPlansRoute
+  '/admin/_layout/routers': typeof AdminLayoutRoutersRoute
+  '/admin/_layout/sessions': typeof AdminLayoutSessionsRoute
+  '/admin/_layout/settings': typeof AdminLayoutSettingsRoute
+  '/admin/_layout/transactions': typeof AdminLayoutTransactionsRoute
+  '/admin/_layout/vouchers': typeof AdminLayoutVouchersRoute
+  '/admin/_layout/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRouteTypes {
@@ -150,8 +151,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reconnect'
     | '/admin'
-    | '/admin/anti-tethering'
     | '/admin/login'
+    | '/admin/anti-tethering'
     | '/admin/plans'
     | '/admin/routers'
     | '/admin/sessions'
@@ -165,15 +166,15 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reconnect'
-    | '/admin'
-    | '/admin/anti-tethering'
     | '/admin/login'
+    | '/admin/anti-tethering'
     | '/admin/plans'
     | '/admin/routers'
     | '/admin/sessions'
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/vouchers'
+    | '/admin'
     | '/api/public/mpesa/callback'
   id:
     | '__root__'
@@ -181,15 +182,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reconnect'
     | '/admin/_layout'
-    | '/admin/anti-tethering'
     | '/admin/login'
-    | '/admin/plans'
-    | '/admin/routers'
-    | '/admin/sessions'
-    | '/admin/settings'
-    | '/admin/transactions'
-    | '/admin/vouchers'
-    | '/admin/'
+    | '/admin/_layout/anti-tethering'
+    | '/admin/_layout/plans'
+    | '/admin/_layout/routers'
+    | '/admin/_layout/sessions'
+    | '/admin/_layout/settings'
+    | '/admin/_layout/transactions'
+    | '/admin/_layout/vouchers'
+    | '/admin/_layout/'
     | '/api/public/mpesa/callback'
   fileRoutesById: FileRoutesById
 }
@@ -197,16 +198,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ReconnectRoute: typeof ReconnectRoute
-  AdminLayoutRoute: typeof AdminLayoutRoute
-  AdminAntiTetheringRoute: typeof AdminAntiTetheringRoute
+  AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
-  AdminPlansRoute: typeof AdminPlansRoute
-  AdminRoutersRoute: typeof AdminRoutersRoute
-  AdminSessionsRoute: typeof AdminSessionsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminTransactionsRoute: typeof AdminTransactionsRoute
-  AdminVouchersRoute: typeof AdminVouchersRoute
-  AdminIndexRoute: typeof AdminIndexRoute
   ApiPublicMpesaCallbackRoute: typeof ApiPublicMpesaCallbackRoute
 }
 
@@ -233,25 +226,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReconnectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/_layout': {
       id: '/admin/_layout'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/anti-tethering': {
-      id: '/admin/anti-tethering'
-      path: '/admin/anti-tethering'
-      fullPath: '/admin/anti-tethering'
-      preLoaderRoute: typeof AdminAntiTetheringRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -261,47 +240,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/plans': {
-      id: '/admin/plans'
-      path: '/admin/plans'
+    '/admin/_layout/': {
+      id: '/admin/_layout/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminLayoutIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/anti-tethering': {
+      id: '/admin/_layout/anti-tethering'
+      path: '/anti-tethering'
+      fullPath: '/admin/anti-tethering'
+      preLoaderRoute: typeof AdminLayoutAntiTetheringRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/plans': {
+      id: '/admin/_layout/plans'
+      path: '/plans'
       fullPath: '/admin/plans'
-      preLoaderRoute: typeof AdminPlansRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutPlansRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/routers': {
-      id: '/admin/routers'
-      path: '/admin/routers'
+    '/admin/_layout/routers': {
+      id: '/admin/_layout/routers'
+      path: '/routers'
       fullPath: '/admin/routers'
-      preLoaderRoute: typeof AdminRoutersRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutRoutersRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/sessions': {
-      id: '/admin/sessions'
-      path: '/admin/sessions'
+    '/admin/_layout/sessions': {
+      id: '/admin/_layout/sessions'
+      path: '/sessions'
       fullPath: '/admin/sessions'
-      preLoaderRoute: typeof AdminSessionsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutSessionsRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/admin/settings'
+    '/admin/_layout/settings': {
+      id: '/admin/_layout/settings'
+      path: '/settings'
       fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutSettingsRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/transactions': {
-      id: '/admin/transactions'
-      path: '/admin/transactions'
+    '/admin/_layout/transactions': {
+      id: '/admin/_layout/transactions'
+      path: '/transactions'
       fullPath: '/admin/transactions'
-      preLoaderRoute: typeof AdminTransactionsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutTransactionsRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/vouchers': {
-      id: '/admin/vouchers'
-      path: '/admin/vouchers'
+    '/admin/_layout/vouchers': {
+      id: '/admin/_layout/vouchers'
+      path: '/vouchers'
       fullPath: '/admin/vouchers'
-      preLoaderRoute: typeof AdminVouchersRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AdminLayoutVouchersRouteImport
+      parentRoute: typeof AdminLayoutRoute
     }
     '/api/public/mpesa/callback': {
       id: '/api/public/mpesa/callback'
@@ -313,20 +306,38 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminLayoutRouteChildren {
+  AdminLayoutAntiTetheringRoute: typeof AdminLayoutAntiTetheringRoute
+  AdminLayoutPlansRoute: typeof AdminLayoutPlansRoute
+  AdminLayoutRoutersRoute: typeof AdminLayoutRoutersRoute
+  AdminLayoutSessionsRoute: typeof AdminLayoutSessionsRoute
+  AdminLayoutSettingsRoute: typeof AdminLayoutSettingsRoute
+  AdminLayoutTransactionsRoute: typeof AdminLayoutTransactionsRoute
+  AdminLayoutVouchersRoute: typeof AdminLayoutVouchersRoute
+  AdminLayoutIndexRoute: typeof AdminLayoutIndexRoute
+}
+
+const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
+  AdminLayoutAntiTetheringRoute: AdminLayoutAntiTetheringRoute,
+  AdminLayoutPlansRoute: AdminLayoutPlansRoute,
+  AdminLayoutRoutersRoute: AdminLayoutRoutersRoute,
+  AdminLayoutSessionsRoute: AdminLayoutSessionsRoute,
+  AdminLayoutSettingsRoute: AdminLayoutSettingsRoute,
+  AdminLayoutTransactionsRoute: AdminLayoutTransactionsRoute,
+  AdminLayoutVouchersRoute: AdminLayoutVouchersRoute,
+  AdminLayoutIndexRoute: AdminLayoutIndexRoute,
+}
+
+const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(
+  AdminLayoutRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ReconnectRoute: ReconnectRoute,
-  AdminLayoutRoute: AdminLayoutRoute,
-  AdminAntiTetheringRoute: AdminAntiTetheringRoute,
+  AdminLayoutRoute: AdminLayoutRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
-  AdminPlansRoute: AdminPlansRoute,
-  AdminRoutersRoute: AdminRoutersRoute,
-  AdminSessionsRoute: AdminSessionsRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
-  AdminTransactionsRoute: AdminTransactionsRoute,
-  AdminVouchersRoute: AdminVouchersRoute,
-  AdminIndexRoute: AdminIndexRoute,
   ApiPublicMpesaCallbackRoute: ApiPublicMpesaCallbackRoute,
 }
 export const routeTree = rootRouteImport
