@@ -292,24 +292,25 @@ export const testRouterConnection = createServerFn({ method: "POST" })
       online: probe.online,
       message: probe.online ? "Router reachable" : "Router did not respond",
     };
+  });
 
-    /** Admin: fetch recent logs from a router. */
-    export const fetchRouterLogs = createServerFn({ method: "POST" })
-      .middleware([requireSupabaseAuth])
-      .inputValidator((data: unknown) => z.object({ routerId: z.string().uuid() }).parse(data))
-      .handler(async ({ data, context }) => {
-        await assertAdmin(context);
-        const { data: router } = await context.supabase
-          .from("routers")
-          .select("id, ip_address, api_port")
-          .eq("id", data.routerId)
-          .maybeSingle();
-        if (!router) return { ok: false as const, logs: [], message: "Router not found" };
 
-        const { fetchRouterLogs: fetchLogs } = await import("./routerService");
-        const result = await fetchLogs(router as any);
-        return { ok: result.ok, logs: result.logs, message: result.message ?? (result.ok ? "Logs fetched" : "Failed") };
-      });
+/** Admin: fetch recent logs from a router. */
+export const fetchRouterLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ routerId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: router } = await context.supabase
+      .from("routers")
+      .select("id, ip_address, api_port")
+      .eq("id", data.routerId)
+      .maybeSingle();
+    if (!router) return { ok: false as const, logs: [], message: "Router not found" };
+
+    const { fetchRouterLogs: fetchLogs } = await import("./routerService");
+    const result = await fetchLogs(router as any);
+    return { ok: result.ok, logs: result.logs, message: result.message ?? (result.ok ? "Logs fetched" : "Failed") };
   });
 
 const routerSchema = z.object({
