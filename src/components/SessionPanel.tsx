@@ -43,7 +43,7 @@ export function SessionPanel({
           data: { subscriptionId: session.id, macAddress: session.mac_address },
         });
       } else {
-        result = await disconnectUser({ data: {} });
+        result = await disconnectUser(undefined);
       }
       toast[result.ok ? "success" : "error"](result.message);
       await queryClient.invalidateQueries();

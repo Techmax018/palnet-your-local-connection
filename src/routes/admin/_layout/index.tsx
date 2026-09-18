@@ -361,7 +361,7 @@ function ReconnectLookup() {
   function handleSmsChange(text: string) {
     setSms(text);
     const match = text.match(/\b([A-Z0-9]{10})\b/);
-    setExtracted(match ? match[1] : null);
+    setExtracted(match?.[1] ?? null);
     setResult(null);
   }
 

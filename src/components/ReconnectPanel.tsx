@@ -22,7 +22,7 @@ import { transferSession } from "@/lib/palnet.functions";
 /** Extracts a 10-character uppercase M-Pesa confirmation code from an SMS body. */
 function extractMpesaCode(sms: string): string | null {
   const match = sms.match(/\b([A-Z0-9]{10})\b/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 export function ReconnectPanel({ onSuccess }: { onSuccess?: () => void }) {

@@ -103,7 +103,7 @@ export function CheckoutDialog({
             endTime: result.subscriptionEndTime ?? new Date(Date.now() + 3_600_000).toISOString(),
           });
           await queryClient.invalidateQueries();
-        } else if (result.status === "verifying" || (result.status === "pending" && payState.step === "waiting_pin")) {
+        } else if (result.status === "pending" && payState.step === "waiting_pin") {
           // Move to verifying after first ping back
           if (payState.step === "waiting_pin") {
             setPayState((s) => s.step === "waiting_pin"
