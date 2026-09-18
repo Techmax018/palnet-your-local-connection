@@ -321,6 +321,32 @@ const routerSchema = z.object({
   location: z.string().trim().max(80).optional().nullable(),
 });
 
+/** Admin: fetch which alerts the current admin has marked read. */
+export const getAdminReadAlerts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data, error } = await context.supabase
+      .from("admin_alert_reads")
+      .select("alert_id")
+      .eq("admin_id", context.userId);
+    if (error) return { ok: false as const, ids: [] as string[], message: error.message };
+    return { ok: true as const, ids: (data ?? []).map((r: any) => r.alert_id as string) };
+  });
+
+/** Admin: mark a list of alert ids as read for the current admin. */
+export const markAdminAlertsRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ ids: z.array(z.string()) }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (!data.ids || data.ids.length === 0) return { ok: true as const };
+    const rows = data.ids.map((id: string) => ({ admin_id: context.userId, alert_id: id }));
+    const { error } = await context.supabase.from("admin_alert_reads").upsert(rows, { onConflict: ["admin_id", "alert_id"] });
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const };
+  });
+
 /** Admin: create or update a router. */
 export const saveRouter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

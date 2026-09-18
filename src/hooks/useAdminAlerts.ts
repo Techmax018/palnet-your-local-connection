@@ -13,7 +13,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminReadAlerts, markAdminAlertsRead } from "@/lib/palnet.functions";
 
 export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertKind = "router" | "payment" | "expiry" | "voucher";
@@ -197,13 +199,29 @@ export function useAdminAlerts() {
 
   /* Read/dismiss state kept per browser */
   const [read, setRead] = useState<string[]>([]);
+  const getReadsFn = useServerFn(getAdminReadAlerts);
+  const markReadsFn = useServerFn(markAdminAlertsRead);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(READ_KEY);
-      if (raw) setRead(JSON.parse(raw) as string[]);
-    } catch {
-      /* ignore */
-    }
+    (async () => {
+      try {
+        const raw = localStorage.getItem(READ_KEY);
+        const local = raw ? (JSON.parse(raw) as string[]) : [];
+        try {
+          const res = await getReadsFn({});
+          if (res.ok) {
+            const merged = [...new Set([...(res.ids ?? []), ...local])];
+            setRead(merged);
+            try { localStorage.setItem(READ_KEY, JSON.stringify(merged.slice(-300))); } catch {}
+            return;
+          }
+        } catch {
+          /* ignore server failure, fall back to local */
+        }
+        if (local.length) setRead(local);
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
 
   const persist = useCallback((ids: string[]) => {
@@ -213,6 +231,13 @@ export function useAdminAlerts() {
     } catch {
       /* ignore */
     }
+    (async () => {
+      try {
+        await markReadsFn({ data: { ids } });
+      } catch {
+        /* ignore server write failure */
+      }
+    })();
   }, []);
 
   const alerts = query.data ?? [];
