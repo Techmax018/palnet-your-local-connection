@@ -353,6 +353,9 @@ function AdminLayout() {
   const searchRef = useRef<HTMLInputElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  const alertsHook = useAdminAlerts();
+  const { alerts, unread, unreadCount, isLoading: alertsLoading, markAllRead, dismiss } = alertsHook;
+
   /* ── Auth gate — role-only, no hardcoded email ── */
   useEffect(() => {
     if (loading || adminLoading) return;
@@ -421,8 +424,6 @@ function AdminLayout() {
     collapsed,
   };
 
-  const alertsHook = useAdminAlerts();
-  const { alerts, unread, unreadCount, isLoading: alertsLoading, markAllRead, dismiss } = alertsHook;
 
   /* Sidebar width: 256px expanded, 64px collapsed */
   const sidebarWidth = collapsed ? "w-16" : "w-64";
