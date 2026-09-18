@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { saveRouter, testRouterConnection } from "@/lib/palnet.functions";
 
-export const Route = createFileRoute("/admin/routers")({
+export const Route = createFileRoute("/admin/_layout/routers")({
   head: () => ({ meta: [{ title: "PalNet Admin — Routers" }] }),
   component: AdminRouters,
 });

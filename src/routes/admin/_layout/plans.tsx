@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { savePlan, deletePlan } from "@/lib/palnet.functions";
 import { formatKes, planDurationLabel, type Plan } from "@/lib/palnet";
 
-export const Route = createFileRoute("/admin/plans")({
+export const Route = createFileRoute("/admin/_layout/plans")({
   head: () => ({ meta: [{ title: "PalNet Admin — Internet Plans" }] }),
   component: AdminPlans,
 });

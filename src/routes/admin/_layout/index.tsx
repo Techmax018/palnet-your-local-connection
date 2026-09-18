@@ -22,7 +22,7 @@ import {
 import { formatKes, formatCountdown, type Plan } from "@/lib/palnet";
 import { getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
 
-export const Route = createFileRoute("/admin/")({
+export const Route = createFileRoute("/admin/_layout/")({
   head: () => ({ meta: [{ title: "PalNet Admin — Dashboard" }] }),
   component: AdminDashboard,
 });
