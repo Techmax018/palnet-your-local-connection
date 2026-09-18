@@ -795,13 +795,30 @@ export const updateNetworkSetting = createServerFn({ method: "POST" })
     z.object({ key: z.string().min(1).max(60), value: z.string().max(200) }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("network_settings")
-      .upsert({ key: data.key, value: data.value, updated_at: new Date().toISOString() });
-    if (error) return { ok: false as const, message: error.message };
-    return { ok: true as const, message: "Setting updated" };
+    try {
+      await assertAdmin(context);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const now = new Date().toISOString();
+
+      // Use upsert with explicit onConflict to ensure insert-or-update behavior.
+      // Requires `key` to be a PRIMARY KEY or UNIQUE column on the table.
+      const { data: saved, error } = await supabaseAdmin
+        .from("network_settings")
+        .upsert(
+          { key: data.key, value: data.value, updated_at: now },
+          { onConflict: "key" },
+        )
+        .select()
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+      return { ok: true as const, message: "Setting updated", setting: saved };
+    } catch (err: any) {
+      console.error("updateNetworkSetting error:", err);
+      return { ok: false as const, message: err?.message ?? String(err) };
+    }
   });
 
 /* ─── Admin: apply / remove anti-tethering rules on all online routers ─── */
