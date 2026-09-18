@@ -244,6 +244,15 @@ function SkeletonGrid({ cols, rows = 2 }: { cols: number; rows?: number }) {
 /* ─── Main portal ──────────────────────────────────────────────────────────── */
 function CaptivePortal() {
   const { data: plans, isLoading } = usePlans();
+  const { data: sysSettings } = useQuery({
+    queryKey: ["system-settings-public"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
+        return data ?? null;
+      } catch { return null; }
+    },
+  });
   const [selected, setSelected] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
@@ -375,6 +384,9 @@ function CaptivePortal() {
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2">
           <ShieldCheck className="size-3.5 text-accent" />
           Payments secured via M-Pesa · PalNet never stores your PIN.
+          {sysSettings?.support_phone && (
+            <span> · <a href={`tel:${sysSettings.support_phone}`} className="text-accent/60 hover:text-accent">Support: {sysSettings.support_phone}</a></span>
+          )}
           <span> · </span>
           <Link to="/admin/login" className="text-accent/50 hover:text-accent/80 transition-colors text-xs">
             ISP Admin
