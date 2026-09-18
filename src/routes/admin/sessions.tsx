@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { terminateSession } from "@/lib/palnet.functions";
 import { formatCountdown } from "@/lib/palnet";
 
-export const Route = createFileRoute("/admin/_layout/sessions")({
+export const Route = createFileRoute("/admin/sessions")({
   head: () => ({ meta: [{ title: "PalNet Admin — Sessions" }] }),
   component: AdminSessions,
 });
