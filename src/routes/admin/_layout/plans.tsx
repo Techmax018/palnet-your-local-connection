@@ -791,7 +791,7 @@ function AdminPlans() {
                         onEdit={() => openEdit(p)}
                         onDelete={() => openDel(p)}
                         onToggle={() => toggleActive(p)}
-                        supportPhone={netSettings?.support_phone ?? "0703161031"}
+                        supportPhone={"0703161031"}
                       />
                     ))}
                     {/* Add-new placeholder card always at the end of each category */}

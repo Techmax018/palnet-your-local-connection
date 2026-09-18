@@ -384,7 +384,7 @@ function CaptivePortal() {
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2">
           <ShieldCheck className="size-3.5 text-accent" />
           Payments secured via M-Pesa · PalNet never stores your PIN.
-          <span> · <a href={`tel:${sysSettings?.support_phone ?? "0703161031"}`} className="text-accent/60 hover:text-accent">Support: {sysSettings?.support_phone ?? "0703161031"}</a></span>
+          <span> · <a href="tel:0703161031" className="text-accent/60 hover:text-accent">Support: 0703161031</a></span>
           <span> · </span>
           <Link to="/admin/login" className="text-accent/50 hover:text-accent/80 transition-colors text-xs">
             ISP Admin

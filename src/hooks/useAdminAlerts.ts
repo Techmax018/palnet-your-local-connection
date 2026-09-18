@@ -39,7 +39,7 @@ export function useNetworkSettings() {
       const map: Record<string, string> = {};
       if (!data) return map;
       map["portal_name"] = data.portal_name ?? "";
-      map["support_phone"] = data.support_phone ?? "0703161031";
+      map["support_phone"] = "0703161031";
       map["wifi_ssid"] = data.wifi_ssid ?? "";
       map["anti_tethering_enabled"] = data.anti_tethering_enabled ? "true" : "false";
       map["maintenance_mode"] = data.maintenance_mode ? "true" : "false";
