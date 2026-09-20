@@ -521,6 +521,7 @@ function ReconnectLookup() {
 function AdminDashboard() {
   const { data: stats, isLoading: statsLoading, refetch, isFetching } = useAdminStats();
   const { data: routers, isLoading: routersLoading } = useRouters();
+  const { data: settings } = useNetworkSettings();
   const queryClient = useQueryClient();
   const pingFn = useServerFn(testRouterConnection);
   const kickFn = useServerFn(terminateSession);
