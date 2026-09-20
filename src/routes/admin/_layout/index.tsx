@@ -600,14 +600,16 @@ function AdminDashboard() {
           <KpiCard
             label="Today's Revenue (KES)"
             value={String(stats?.todayRevenue ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-            sub="Completed M-Pesa payments"
+            sub={`${stats?.salesToday ?? 0} payments · ${
+              (stats?.revenueChangePct ?? 0) >= 0 ? "+" : ""
+            }${stats?.revenueChangePct ?? 0}% vs yesterday`}
             icon={TrendingUp}
             color="bg-emerald-500/15 text-emerald-400"
           />
           <KpiCard
             label="Active Hotspot Users"
-            value={String(stats?.activeAll ?? 0)}
-            sub="Currently connected"
+            value={String(stats?.activeHotspot ?? 0)}
+            sub={`${stats?.expiringSoon ?? 0} expiring within 15 min`}
             icon={Users}
             color="bg-cyan-500/15 text-cyan-400"
           />
@@ -627,6 +629,95 @@ function AdminDashboard() {
           />
         </div>
       )}
+
+      {/* ── 7-day revenue trend + operations strip ── */}
+      {!statsLoading && stats && (
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="admin-card p-4 lg:col-span-2">
+            <div className="mb-3 flex items-end justify-between">
+              <div>
+                <p className="text-sm font-bold text-white">Revenue — last 7 days</p>
+                <p className="text-xs text-slate-500">
+                  KES {stats.weekRevenue.toLocaleString()} collected · average sale KES{" "}
+                  {stats.avgSaleToday.toLocaleString()}
+                </p>
+              </div>
+              <span className="text-xs text-slate-600">Completed M-Pesa only</span>
+            </div>
+            <div className="flex h-32 items-end gap-2">
+              {stats.trend.map((d) => {
+                const max = Math.max(...stats.trend.map((t) => t.revenue), 1);
+                const pct = Math.round((d.revenue / max) * 100);
+                return (
+                  <div key={d.date} className="group flex flex-1 flex-col items-center gap-1.5">
+                    <span className="text-xs tabular-nums text-slate-500 opacity-0 transition-opacity group-hover:opacity-100">
+                      {d.revenue.toLocaleString()}
+                    </span>
+                    <div className="flex w-full flex-1 items-end">
+                      <div
+                        className="w-full rounded-t-md transition-all"
+                        style={{
+                          height: `${Math.max(pct, 3)}%`,
+                          background:
+                            d.revenue > 0
+                              ? "linear-gradient(180deg,#00f3ff,#0891b2)"
+                              : "rgba(100,116,139,0.25)",
+                          boxShadow: d.revenue > 0 ? "0 0 10px rgba(0,243,255,0.25)" : "none",
+                        }}
+                        title={`${d.date}: KES ${d.revenue.toLocaleString()} · ${d.sales} sale(s)`}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-500">{d.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="admin-card p-4">
+            <p className="mb-3 text-sm font-bold text-white">Operations</p>
+            <div className="space-y-2">
+              {[
+                {
+                  label: "Failed payments (24h)",
+                  value: stats.failed24h,
+                  tone: stats.failed24h ? "text-red-400" : "text-slate-300",
+                },
+                {
+                  label: "Pending payments",
+                  value: stats.pendingPayments,
+                  tone: stats.pendingPayments ? "text-amber-400" : "text-slate-300",
+                },
+                {
+                  label: "Unused vouchers in stock",
+                  value: stats.unusedVouchers,
+                  tone: stats.unusedVouchers < 10 ? "text-amber-400" : "text-emerald-400",
+                },
+                {
+                  label: "Sessions expiring soon",
+                  value: stats.expiringSoon,
+                  tone: stats.expiringSoon ? "text-cyan-400" : "text-slate-300",
+                },
+                {
+                  label: "Routers offline",
+                  value: (stats.totalRouters ?? 0) - (stats.onlineRouters ?? 0),
+                  tone:
+                    stats.totalRouters - stats.onlineRouters > 0 ? "text-red-400" : "text-emerald-400",
+                },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  className="flex items-center justify-between rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2"
+                >
+                  <span className="text-xs text-slate-400">{row.label}</span>
+                  <span className={`text-sm font-bold tabular-nums ${row.tone}`}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Router Status & Location Map ── */}
       <div>
