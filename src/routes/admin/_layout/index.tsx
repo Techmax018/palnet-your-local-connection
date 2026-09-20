@@ -52,23 +52,97 @@ function useAdminStats() {
     queryKey: ["admin-stats"],
     refetchInterval: 30_000,
     queryFn: async () => {
-      const now = new Date().toISOString();
+      const nowMs = Date.now();
+      const now = new Date(nowMs).toISOString();
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const [rev, all, tv, online, total] = await Promise.all([
-        supabase.from("transactions").select("amount_kes").eq("status", "completed").gte("created_at", todayStart.toISOString()),
-        supabase.from("user_subscriptions").select("id", { count: "exact", head: true }).eq("status", "active").gt("end_time", now),
-        supabase.from("user_subscriptions").select("id", { count: "exact", head: true }).eq("status", "active").gt("end_time", now)
-          .in("plan_id", (await supabase.from("internet_plans").select("id").eq("category", "tv")).data?.map((p: any) => p.id) ?? []),
-        supabase.from("routers").select("id", { count: "exact", head: true }).eq("status", "online"),
-        supabase.from("routers").select("id", { count: "exact", head: true }),
-      ]);
+      const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+      const weekStart = new Date(todayStart.getTime() - 6 * 86_400_000);
+
+      const tvPlanIds =
+        (await supabase.from("internet_plans").select("id").eq("category", "tv")).data?.map(
+          (p: { id: string }) => p.id,
+        ) ?? [];
+
+      const [weekTx, activeSubs, online, total, unusedVouchers, failed24h, pending] =
+        await Promise.all([
+          supabase
+            .from("transactions")
+            .select("amount_kes, created_at, status, payment_method")
+            .gte("created_at", weekStart.toISOString()),
+          supabase
+            .from("user_subscriptions")
+            .select("id, plan_id, end_time, start_time")
+            .eq("status", "active")
+            .gt("end_time", now),
+          supabase.from("routers").select("id", { count: "exact", head: true }).eq("status", "online"),
+          supabase.from("routers").select("id", { count: "exact", head: true }),
+          supabase.from("vouchers").select("id", { count: "exact", head: true }).eq("status", "unused"),
+          supabase
+            .from("transactions")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "failed")
+            .gte("created_at", new Date(nowMs - 86_400_000).toISOString()),
+          supabase.from("transactions").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        ]);
+
+      const completed = (weekTx.data ?? []).filter((t) => t.status === "completed");
+      const sumFrom = (fromIso: string, toIso?: string) =>
+        completed
+          .filter((t) => t.created_at >= fromIso && (!toIso || t.created_at < toIso))
+          .reduce((s, t) => s + Number(t.amount_kes), 0);
+
+      const todayRevenue = sumFrom(todayStart.toISOString());
+      const yesterdayRevenue = sumFrom(yesterdayStart.toISOString(), todayStart.toISOString());
+      const weekRevenue = sumFrom(weekStart.toISOString());
+
+      /* 7-day trend, oldest → newest */
+      const trend = Array.from({ length: 7 }, (_, i) => {
+        const dayStart = new Date(todayStart.getTime() - (6 - i) * 86_400_000);
+        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        return {
+          day: dayStart.toLocaleDateString("en-KE", { weekday: "short" }),
+          date: dayStart.toISOString().slice(0, 10),
+          revenue: sumFrom(dayStart.toISOString(), dayEnd.toISOString()),
+          sales: completed.filter(
+            (t) => t.created_at >= dayStart.toISOString() && t.created_at < dayEnd.toISOString(),
+          ).length,
+        };
+      });
+
+      const subs = activeSubs.data ?? [];
+      const activeTv = subs.filter((s) => tvPlanIds.includes(s.plan_id)).length;
+      const expiringSoon = subs.filter(
+        (s) => new Date(s.end_time).getTime() - nowMs < 15 * 60_000,
+      ).length;
+
+      const revenueChangePct =
+        yesterdayRevenue > 0
+          ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100)
+          : todayRevenue > 0
+            ? 100
+            : 0;
+
       return {
-        todayRevenue: (rev.data ?? []).reduce((s: number, t: any) => s + Number(t.amount_kes), 0),
-        activeAll: all.count ?? 0,
-        activeTv: tv.count ?? 0,
+        todayRevenue,
+        yesterdayRevenue,
+        weekRevenue,
+        revenueChangePct,
+        salesToday: completed.filter((t) => t.created_at >= todayStart.toISOString()).length,
+        avgSaleToday: (() => {
+          const n = completed.filter((t) => t.created_at >= todayStart.toISOString()).length;
+          return n ? Math.round(todayRevenue / n) : 0;
+        })(),
+        trend,
+        activeAll: subs.length,
+        activeTv,
+        activeHotspot: subs.length - activeTv,
+        expiringSoon,
         onlineRouters: online.count ?? 0,
         totalRouters: total.count ?? 0,
+        unusedVouchers: unusedVouchers.count ?? 0,
+        failed24h: failed24h.count ?? 0,
+        pendingPayments: pending.count ?? 0,
       };
     },
   });
