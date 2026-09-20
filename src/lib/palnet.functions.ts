@@ -55,34 +55,40 @@ export const startGuestPayment = createServerFn({ method: "POST" })
     });
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
-    const { requestStkPush } = await import("./mpesa.server");
-    const push = await requestStkPush({
-      phone,
-      amount: Number(plan.price_kes),
-      reference,
-      description: plan.name,
+    const appBaseUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
+    const payHeroUrl = new URL("/api/payments/initiate", appBaseUrl.endsWith("/") ? appBaseUrl : `${appBaseUrl}/`).toString();
+
+    const payHeroRes = await fetch(payHeroUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: data.phone,
+        amount: Number(plan.price_kes),
+        planName: plan.name,
+        reference,
+      }),
     });
 
-    if (!push.live) {
-      const { processMpesaCallback } = await import("./routerService");
-      const result = await processMpesaCallback({
-        Body: { stkCallback: { ResultCode: 0, CheckoutRequestID: reference } },
-      });
+    const payHeroData = (await payHeroRes.json().catch(() => ({}))) as {
+      success?: boolean;
+      message?: string;
+      reference?: string;
+    };
+
+    if (!payHeroRes.ok || payHeroData.success !== true) {
       return {
-        ok: result.ok,
-        simulated: true as const,
+        ok: false as const,
+        simulated: false as const,
         reference,
-        message: result.ok
-          ? `Payment of KES ${plan.price_kes} confirmed — you are online.`
-          : "Payment could not be confirmed",
+        message: payHeroData.message ?? "Payment could not be initiated.",
       };
     }
 
     return {
       ok: true as const,
       simulated: false as const,
-      reference,
-      message: `Check ${data.phone} and enter your M-Pesa PIN to go online.`,
+      reference: payHeroData.reference ?? reference,
+      message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
     };
   });
 
@@ -427,34 +433,40 @@ export const payWithMpesa = createServerFn({ method: "POST" })
     });
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
-    const { requestStkPush } = await import("./mpesa.server");
-    const push = await requestStkPush({
-      phone,
-      amount: Number(plan.price_kes),
-      reference,
-      description: plan.name,
+    const appBaseUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
+    const payHeroUrl = new URL("/api/payments/initiate", appBaseUrl.endsWith("/") ? appBaseUrl : `${appBaseUrl}/`).toString();
+
+    const payHeroRes = await fetch(payHeroUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: data.phone,
+        amount: Number(plan.price_kes),
+        planName: plan.name,
+        reference,
+      }),
     });
 
-    if (!push.live) {
-      const { processMpesaCallback } = await import("./routerService");
-      const result = await processMpesaCallback({
-        Body: { stkCallback: { ResultCode: 0, CheckoutRequestID: reference } },
-      });
+    const payHeroData = (await payHeroRes.json().catch(() => ({}))) as {
+      success?: boolean;
+      message?: string;
+      reference?: string;
+    };
+
+    if (!payHeroRes.ok || payHeroData.success !== true) {
       return {
-        ok: result.ok as true,
-        simulated: true as const,
+        ok: false as const,
+        simulated: false as const,
         reference,
-        message: result.ok
-          ? `Payment of KES ${plan.price_kes} confirmed — you are online.`
-          : "Payment could not be confirmed",
+        message: payHeroData.message ?? "Payment could not be initiated.",
       };
     }
 
     return {
       ok: true as const,
       simulated: false as const,
-      reference,
-      message: `Check ${data.phone} and enter your M-Pesa PIN to go online.`,
+      reference: payHeroData.reference ?? reference,
+      message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
     };
   });
 
