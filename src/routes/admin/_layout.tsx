@@ -515,14 +515,8 @@ function AdminLayout() {
               </span>
             </div>
 
-            {/* Notifications */}
-            <button className="relative rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-              <Bell className="size-4" />
-              <span
-                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-                style={{ background: "#00f3ff", boxShadow: "0 0 4px #00f3ff" }}
-              />
-            </button>
+            {/* Notifications — live alert feed */}
+            <AdminNotificationBell />
 
             {/* Profile dropdown */}
             <div className="relative">
