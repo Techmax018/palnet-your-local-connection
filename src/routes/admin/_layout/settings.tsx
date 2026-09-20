@@ -1,14 +1,45 @@
+/**
+ * Settings & System Config — all operational settings are stored in the
+ * network_settings table and read live by the portal, the alert engine and
+ * the dashboard. Server credentials are shown read-only (they live as
+ * server secrets and are never sent to the browser).
+ */
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Settings, Key, Webhook, Database, Save, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Bell, Database, Key, Loader2, RotateCcw, Save, Settings, ShieldBan, Wifi } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { updateNetworkSetting, applyAntiTetheringToAllRouters } from "@/lib/palnet.functions";
 
 export const Route = createFileRoute("/admin/_layout/settings")({
-  head: () => ({ meta: [{ title: "PalNet Admin — Settings" }] }),
+  head: () => ({
+    meta: [
+      { title: "PalNet Admin — Settings" },
+      { name: "description", content: "Configure PalNet hotspot, alerts and anti-tethering settings." },
+    ],
+  }),
   component: AdminSettings,
 });
+
+type SettingsMap = Record<string, string>;
+
+const DEFAULTS: SettingsMap = {
+  hotspot_ssid: "PalNet-WiFi",
+  support_phone: "0700000000",
+  max_devices_per_session: "1",
+  anti_tethering_enabled: "false",
+  alert_voucher_low_threshold: "10",
+  alert_expiry_warning_minutes: "15",
+  alert_router_offline_enabled: "true",
+  alert_failed_payment_enabled: "true",
+};
 
 function Section({
   icon: Icon,
@@ -37,81 +68,228 @@ function Section({
   );
 }
 
-function SecretInput({ label, placeholder, envVar }: { label: string; placeholder: string; envVar: string }) {
-  const [show, setShow] = useState(false);
+function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label className="admin-label">{label}</Label>
-        <code className="text-xs text-cyan-400/70">{envVar}</code>
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-800/60 bg-slate-900/50 p-3">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-white">{label}</p>
+        <p className="text-xs text-slate-500">{hint}</p>
       </div>
-      <div className="relative">
-        <Input
-          type={show ? "text" : "password"}
-          placeholder={placeholder}
-          className="admin-input pr-9"
-        />
-        <button
-          onClick={() => setShow((s) => !s)}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-        >
-          {show ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-        </button>
-      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
 
 function AdminSettings() {
+  const queryClient = useQueryClient();
+  const saveSetting = useServerFn(updateNetworkSetting);
+  const applyRules = useServerFn(applyAntiTetheringToAllRouters);
+
+  const { data: saved, isLoading } = useQuery({
+    queryKey: ["network-settings"],
+    queryFn: async (): Promise<SettingsMap> => {
+      const { data, error } = await supabase.from("network_settings").select("key, value");
+      if (error) throw error;
+      const map: SettingsMap = { ...DEFAULTS };
+      for (const row of data ?? []) map[row.key] = row.value;
+      return map;
+    },
+  });
+
+  const [form, setForm] = useState<SettingsMap>(DEFAULTS);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (saved) setForm(saved);
+  }, [saved]);
+
+  const dirty = !!saved && Object.keys(form).some((k) => form[k] !== saved[k]);
+  const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  async function handleSave() {
+    if (!saved) return;
+    setBusy(true);
+    try {
+      const changed = Object.keys(form).filter((k) => form[k] !== saved[k]);
+      for (const key of changed) {
+        const result = await saveSetting({ data: { key, value: form[key] ?? "" } });
+        if (!result.ok) throw new Error(result.message);
+      }
+      /* Push anti-tethering state to the live routers when it changed */
+      if (changed.includes("anti_tethering_enabled")) {
+        const res = await applyRules({ data: { enable: form["anti_tethering_enabled"] === "true" } });
+        toast.info(res.message);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["network-settings"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-alerts"] });
+      toast.success(`Saved ${changed.length} setting${changed.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save settings");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl space-y-4">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-40 admin-skeleton rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl pb-16">
       <div>
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
           <Settings className="size-5 text-cyan-400" />
-          Settings & System Config
+          Settings &amp; System Config
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          API keys, webhook endpoints, and Supabase backend configuration.
-          Changes here require a server restart to take effect.
+          Saved to your database instantly — the customer portal, alerts and dashboard use these values.
         </p>
       </div>
 
-      <Section icon={Database} title="Supabase Backend" sub="Database and authentication credentials">
-        <SecretInput label="Supabase Project URL" placeholder="https://xxxx.supabase.co" envVar="SUPABASE_URL" />
-        <SecretInput label="Supabase Anon Key" placeholder="eyJhbGci…" envVar="SUPABASE_ANON_KEY" />
-        <SecretInput label="Supabase Service Role Key" placeholder="eyJhbGci…" envVar="SUPABASE_SERVICE_ROLE_KEY" />
-      </Section>
-
-      <Section icon={Key} title="Safaricom Daraja API" sub="M-Pesa STK Push credentials">
-        <SecretInput label="Consumer Key" placeholder="Daraja consumer key" envVar="MPESA_CONSUMER_KEY" />
-        <SecretInput label="Consumer Secret" placeholder="Daraja consumer secret" envVar="MPESA_CONSUMER_SECRET" />
-        <SecretInput label="Passkey" placeholder="Lipa Na M-Pesa passkey" envVar="MPESA_PASSKEY" />
+      <Section icon={Wifi} title="Hotspot & Branding" sub="Shown to customers on the portal">
         <div className="space-y-1.5">
-          <Label className="admin-label">Shortcode / Till Number</Label>
-          <Input placeholder="e.g. 174379" className="admin-input" />
+          <Label className="admin-label">Wi-Fi network name (SSID)</Label>
+          <Input
+            className="admin-input"
+            value={form["hotspot_ssid"] ?? ""}
+            onChange={(e) => set("hotspot_ssid", e.target.value)}
+            placeholder="PalNet-WiFi"
+          />
         </div>
         <div className="space-y-1.5">
-          <Label className="admin-label">Callback URL</Label>
-          <Input placeholder="https://palnet-wifi.vercel.app/api/public/mpesa/callback" className="admin-input" />
-        </div>
-      </Section>
-
-      <Section icon={Webhook} title="Router API Credentials" sub="MikroTik / OpenWrt REST API access">
-        <SecretInput label="Router API Username" placeholder="admin" envVar="ROUTER_API_USER" />
-        <SecretInput label="Router API Password" placeholder="router password" envVar="ROUTER_API_PASSWORD" />
-        <div className="space-y-1.5">
-          <Label className="admin-label">Default API Port</Label>
-          <Input type="number" placeholder="8728" className="admin-input" />
+          <Label className="admin-label">Support phone number</Label>
+          <Input
+            className="admin-input"
+            value={form["support_phone"] ?? ""}
+            onChange={(e) => set("support_phone", e.target.value)}
+            placeholder="0700000000"
+          />
         </div>
       </Section>
 
-      <div className="flex gap-3 pt-2">
-        <Button className="admin-btn-primary gap-2">
-          <Save className="size-4" /> Save Changes
+      <Section icon={ShieldBan} title="Device Sharing Controls" sub="Applied on every online router">
+        <div className="space-y-1.5">
+          <Label className="admin-label">Max devices per paid session</Label>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            className="admin-input"
+            value={form["max_devices_per_session"] ?? "1"}
+            onChange={(e) =>
+              set("max_devices_per_session", String(Math.min(10, Math.max(1, Number(e.target.value) || 1))))
+            }
+          />
+        </div>
+        <ToggleRow
+          label="Block hotspot tethering"
+          hint="Stops one payment being shared with extra phones"
+          checked={form["anti_tethering_enabled"] === "true"}
+          onChange={(v) => set("anti_tethering_enabled", String(v))}
+        />
+      </Section>
+
+      <Section icon={Bell} title="Alert Rules" sub="Controls the notification bell feed">
+        <ToggleRow
+          label="Router offline alerts"
+          hint="Warn the moment an access point stops responding"
+          checked={form["alert_router_offline_enabled"] === "true"}
+          onChange={(v) => set("alert_router_offline_enabled", String(v))}
+        />
+        <ToggleRow
+          label="Failed M-Pesa payment alerts"
+          hint="Warn on failed payments from the last 24 hours"
+          checked={form["alert_failed_payment_enabled"] === "true"}
+          onChange={(v) => set("alert_failed_payment_enabled", String(v))}
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="admin-label">Warn when a session has less than (minutes)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={240}
+              className="admin-input"
+              value={form["alert_expiry_warning_minutes"] ?? "15"}
+              onChange={(e) =>
+                set("alert_expiry_warning_minutes", String(Math.min(240, Math.max(1, Number(e.target.value) || 1))))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="admin-label">Low voucher stock threshold</Label>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              className="admin-input"
+              value={form["alert_voucher_low_threshold"] ?? "10"}
+              onChange={(e) =>
+                set("alert_voucher_low_threshold", String(Math.min(500, Math.max(1, Number(e.target.value) || 1))))
+              }
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={Key} title="Server Credentials" sub="Stored securely on the server — never shown in the browser">
+        <div className="space-y-2">
+          {[
+            { label: "M-Pesa (Daraja) API keys", note: "STK Push consumer key, secret, passkey, shortcode" },
+            { label: "Router API login", note: "MikroTik / OpenWrt REST username and password" },
+            { label: "Database service key", note: "Used by payment callbacks and admin actions" },
+          ].map((c) => (
+            <div
+              key={c.label}
+              className="flex items-center justify-between gap-3 rounded-lg border border-slate-800/60 bg-slate-900/50 p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white">{c.label}</p>
+                <p className="truncate text-xs text-slate-500">{c.note}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-slate-700/60 px-2 py-0.5 text-xs text-slate-300">
+                Server-side
+              </span>
+            </div>
+          ))}
+          <p className="flex items-center gap-1.5 text-xs text-slate-600">
+            <Database className="size-3" />
+            Ask your developer to update these keys — they cannot be edited from a web page for security.
+          </p>
+        </div>
+      </Section>
+
+      <div className="sticky bottom-0 -mx-1 flex items-center gap-3 border-t border-slate-800/80 bg-[#0d1117]/95 px-1 py-3 backdrop-blur">
+        <Button className="admin-btn-primary gap-2" disabled={!dirty || busy} onClick={handleSave}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          {dirty ? "Save Changes" : "Saved"}
         </Button>
-        <p className="self-center text-xs text-slate-500">
-          These values are stored as environment variables on the server — they are never exposed to the browser.
-        </p>
+        {dirty && (
+          <Button
+            variant="outline"
+            className="admin-btn-outline gap-2 text-xs"
+            disabled={busy}
+            onClick={() => saved && setForm(saved)}
+          >
+            <RotateCcw className="size-3.5" /> Reset
+          </Button>
+        )}
       </div>
     </div>
   );
