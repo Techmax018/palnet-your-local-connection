@@ -30,6 +30,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession, useIsAdmin } from "@/hooks/usePalNet";
+import { AdminNotificationBell } from "@/components/AdminNotificationBell";
 
 export const Route = createFileRoute("/admin/_layout")({
   component: AdminLayout,
