@@ -9,11 +9,22 @@ export async function requestStkPush(input: {
   reference: string;
   description: string;
 }): Promise<{ live: boolean; message: string }> {
-  const key = process.env["MPESA_CONSUMER_KEY"];
-  const secret = process.env["MPESA_CONSUMER_SECRET"];
-  const shortcode = process.env["MPESA_SHORTCODE"];
-  const passkey = process.env["MPESA_PASSKEY"];
-  const callbackUrl = process.env["MPESA_CALLBACK_URL"];
+  const key = process.env["MPESA_CONSUMER_KEY"] ?? process.env["DARAJA_CONSUMER_KEY"];
+  const secret = process.env["MPESA_CONSUMER_SECRET"] ?? process.env["DARAJA_CONSUMER_SECRET"];
+  const shortcode =
+    process.env["MPESA_SHORTCODE"] ??
+    process.env["DARAJA_TILL_NUMBER"] ??
+    process.env["DARAJA_SHORTCODE"] ??
+    process.env["DARAJA_TILL"];
+  const passkey = process.env["MPESA_PASSKEY"] ?? process.env["DARAJA_PASSKEY"];
+
+  const callbackUrl =
+    process.env["MPESA_CALLBACK_URL"] ??
+    (() => {
+      const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? process.env["APP_URL"];
+      if (!appUrl) return undefined;
+      return new URL("/api/public/mpesa/callback", appUrl.endsWith("/") ? appUrl : `${appUrl}/`).toString();
+    })();
 
   if (!key || !secret || !shortcode || !passkey || !callbackUrl) {
     console.info("[mpesa] credentials missing — simulating STK push", input.reference);
