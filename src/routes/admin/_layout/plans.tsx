@@ -337,9 +337,9 @@ function DeleteConfirmDialog({
 
 /* ─── Plan Card (grid view) ─────────────────────────────────────────────── */
 function PlanCard({
-  plan, onEdit, onDelete, onToggle, supportPhone,
+  plan, onEdit, onDelete, onToggle,
 }: {
-  plan: Plan; onEdit: () => void; onDelete: () => void; onToggle: () => void; supportPhone?: string | null;
+  plan: Plan; onEdit: () => void; onDelete: () => void; onToggle: () => void;
 }) {
   return (
     <div
@@ -414,11 +414,6 @@ function PlanCard({
           <Trash2 className="size-3" /> Delete
         </Button>
       </div>
-      {supportPhone && (
-        <div className="mt-3 rounded-md bg-slate-900/50 border border-slate-800/60 p-2 text-xs text-slate-300">
-          <strong className="text-white">Support:</strong> {supportPhone}
-        </div>
-      )}
     </div>
   );
 }
@@ -468,14 +463,6 @@ function AdminPlans() {
         .order("category")
         .order("price_kes");
       return (data ?? []) as Plan[];
-    },
-  });
-
-  const { data: netSettings } = useQuery({
-    queryKey: ["system-settings"],
-    queryFn: async () => {
-      const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
-      return data ?? null;
     },
   });
 
@@ -791,7 +778,6 @@ function AdminPlans() {
                         onEdit={() => openEdit(p)}
                         onDelete={() => openDel(p)}
                         onToggle={() => toggleActive(p)}
-                        supportPhone={"0703161031"}
                       />
                     ))}
                     {/* Add-new placeholder card always at the end of each category */}

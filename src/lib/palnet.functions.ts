@@ -245,13 +245,11 @@ export const disconnectGuestSession = createServerFn({ method: "POST" })
 /* ------------------------------- Admin area ------------------------------- */
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
-  const { data } = await context.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", context.userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Forbidden");
+  const { data: isAdmin } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "admin",
+  });
+  if (!isAdmin) throw new Error("Forbidden");
 }
 
 /** Admin: force-terminate any session. */
@@ -294,25 +292,6 @@ export const testRouterConnection = createServerFn({ method: "POST" })
     };
   });
 
-
-/** Admin: fetch recent logs from a router. */
-export const fetchRouterLogs = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ routerId: z.string().uuid() }).parse(data))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { data: router } = await context.supabase
-      .from("routers")
-      .select("id, ip_address, api_port")
-      .eq("id", data.routerId)
-      .maybeSingle();
-    if (!router) return { ok: false as const, logs: [], message: "Router not found" };
-
-    const { fetchRouterLogs: fetchLogs } = await import("./routerService");
-    const result = await fetchLogs(router as any);
-    return { ok: result.ok, logs: result.logs, message: result.message ?? (result.ok ? "Logs fetched" : "Failed") };
-  });
-
 const routerSchema = z.object({
   id: z.string().uuid().optional().nullable(),
   name: z.string().trim().min(2).max(60),
@@ -320,32 +299,6 @@ const routerSchema = z.object({
   api_port: z.number().int().min(1).max(65535),
   location: z.string().trim().max(80).optional().nullable(),
 });
-
-/** Admin: fetch which alerts the current admin has marked read. */
-export const getAdminReadAlerts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context);
-    const { data, error } = await context.supabase
-      .from("admin_alert_reads")
-      .select("alert_id")
-      .eq("admin_id", context.userId);
-    if (error) return { ok: false as const, ids: [] as string[], message: error.message };
-    return { ok: true as const, ids: (data ?? []).map((r: any) => r.alert_id as string) };
-  });
-
-/** Admin: mark a list of alert ids as read for the current admin. */
-export const markAdminAlertsRead = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ ids: z.array(z.string()) }).parse(data))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    if (!data.ids || data.ids.length === 0) return { ok: true as const };
-    const rows = data.ids.map((id: string) => ({ admin_id: context.userId, alert_id: id }));
-    const { error } = await context.supabase.from("admin_alert_reads").upsert(rows, { onConflict: ["admin_id", "alert_id"] });
-    if (error) return { ok: false as const, message: error.message };
-    return { ok: true as const };
-  });
 
 /** Admin: create or update a router. */
 export const saveRouter = createServerFn({ method: "POST" })
@@ -364,33 +317,6 @@ export const saveRouter = createServerFn({ method: "POST" })
       : await context.supabase.from("routers").insert(payload);
     if (error) return { ok: false as const, message: error.message };
     return { ok: true as const, message: data.id ? "Router updated" : "Router added" };
-  });
-
-/** Admin: delete a router if it is not referenced by active subscriptions. */
-export const deleteRouter = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
-  .handler(async ({ data, context }) => {
-    try {
-      await assertAdmin(context);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-      // Prevent deleting routers that are referenced by subscriptions
-      const { count } = await supabaseAdmin
-        .from("user_subscriptions")
-        .select("id", { head: true })
-        .eq("router_id", data.id as string);
-      if ((count ?? 0) > 0) {
-        return { ok: false as const, message: "Router has subscriptions assigned — unassign before deleting." };
-      }
-
-      const { error } = await supabaseAdmin.from("routers").delete().eq("id", data.id as string);
-      if (error) return { ok: false as const, message: error.message };
-      return { ok: true as const, message: "Router deleted" };
-    } catch (err: any) {
-      console.error('[deleteRouter] error', err?.message ?? String(err));
-      return { ok: false as const, message: err?.message ? String(err.message) : 'Failed to delete router' };
-    }
   });
 
 const planSchema = z.object({
@@ -459,33 +385,6 @@ export const generateVouchers = createServerFn({ method: "POST" })
       message: `${inserted?.length ?? 0} scratch cards generated`,
       codes: (inserted ?? []).map((row: { code: string }) => row.code),
     };
-  });
-
-/** Admin: delete a voucher by id or code (only if unused). */
-export const deleteVoucher = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
-    z
-      .object({ id: z.string().uuid().optional(), code: z.string().trim().min(4).max(20).optional() })
-      .refine((v) => !!v.id || !!v.code, { message: "Provide id or code" })
-      .parse(data),
-  )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const query = data.id
-      ? supabaseAdmin.from("vouchers").select("id, code, status").eq("id", data.id).maybeSingle()
-      : supabaseAdmin.from("vouchers").select("id, code, status").eq("code", data.code).maybeSingle();
-
-    const { data: row, error: selErr } = await query;
-    if (selErr) return { ok: false as const, message: selErr.message };
-    if (!row) return { ok: false as const, message: "Voucher not found" };
-    if (row.status !== "unused") return { ok: false as const, message: "Only unused vouchers can be deleted" };
-
-    const { error } = await supabaseAdmin.from("vouchers").delete().eq("id", row.id);
-    if (error) return { ok: false as const, message: error.message };
-    return { ok: true as const, message: "Voucher deleted" };
   });
 
 /* -------- Logged-in user convenience wrappers (kept for compatibility) ---- */
@@ -894,71 +793,13 @@ export const updateNetworkSetting = createServerFn({ method: "POST" })
     z.object({ key: z.string().min(1).max(60), value: z.string().max(200) }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    try {
-      await assertAdmin(context);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-      const now = new Date().toISOString();
-
-      // Use upsert with explicit onConflict to ensure insert-or-update behavior.
-      // Requires `key` to be a PRIMARY KEY or UNIQUE column on the table.
-      const { data: saved, error } = await supabaseAdmin
-        .from("network_settings")
-        .upsert(
-          { key: data.key, value: data.value, updated_at: now },
-          { onConflict: "key" },
-        )
-        .select()
-        .limit(1)
-        .single();
-
-      if (error) throw error;
-      return { ok: true as const, message: "Setting updated", setting: saved };
-    } catch (err: any) {
-      console.error("updateNetworkSetting error:", err);
-      return { ok: false as const, message: err?.message ?? String(err) };
-    }
-  });
-
-/** Admin: update the single-row system_settings record. */
-export const updateSystemSettings = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) =>
-    z.object({
-      portal_name: z.string().max(120).optional(),
-      support_phone: z.string().max(24).optional().nullable(),
-      wifi_ssid: z.string().max(80).optional(),
-      anti_tethering_enabled: z.boolean().optional(),
-      maintenance_mode: z.boolean().optional(),
-      guest_checkout_enabled: z.boolean().optional(),
-      alert_router_offline: z.boolean().optional(),
-      alert_tethering: z.boolean().optional(),
-    }).parse(data),
-  )
-  .handler(async ({ data, context }) => {
-    try {
-      await assertAdmin(context);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-      const payload: any = { id: true, updated_at: new Date().toISOString() };
-      if (data.portal_name !== undefined) payload.portal_name = data.portal_name;
-      if (data.support_phone !== undefined) payload.support_phone = data.support_phone;
-      if (data.wifi_ssid !== undefined) payload.wifi_ssid = data.wifi_ssid;
-      if (data.anti_tethering_enabled !== undefined) payload.anti_tethering_enabled = data.anti_tethering_enabled;
-      if (data.maintenance_mode !== undefined) payload.maintenance_mode = data.maintenance_mode;
-      if (data.guest_checkout_enabled !== undefined) payload.guest_checkout_enabled = data.guest_checkout_enabled;
-      if (data.alert_router_offline !== undefined) payload.alert_router_offline = data.alert_router_offline;
-      if (data.alert_tethering !== undefined) payload.alert_tethering = data.alert_tethering;
-
-      const { error } = await supabaseAdmin
-        .from("system_settings")
-        .upsert(payload, { onConflict: "id" });
-      if (error) throw error;
-      return { ok: true as const, message: "Settings updated" };
-    } catch (err: any) {
-      console.error("updateSystemSettings error:", err);
-      return { ok: false as const, message: err?.message ?? String(err) };
-    }
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("network_settings")
+      .upsert({ key: data.key, value: data.value, updated_at: new Date().toISOString() });
+    if (error) return { ok: false as const, message: error.message };
+    return { ok: true as const, message: "Setting updated" };
   });
 
 /* ─── Admin: apply / remove anti-tethering rules on all online routers ─── */

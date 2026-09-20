@@ -28,10 +28,9 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useAdminAlerts } from "@/hooks/useAdminAlerts";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession, useIsAdmin } from "@/hooks/usePalNet";
+import { AdminNotificationBell } from "@/components/AdminNotificationBell";
 
 export const Route = createFileRoute("/admin/_layout")({
   component: AdminLayout,
@@ -348,13 +347,9 @@ function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  const alertsHook = useAdminAlerts();
-  const { alerts, unread, unreadCount, isLoading: alertsLoading, markAllRead, dismiss } = alertsHook;
 
   /* ── Auth gate — role-only, no hardcoded email ── */
   useEffect(() => {
@@ -423,7 +418,6 @@ function AdminLayout() {
     pathname,
     collapsed,
   };
-
 
   /* Sidebar width: 256px expanded, 64px collapsed */
   const sidebarWidth = collapsed ? "w-16" : "w-64";
@@ -522,61 +516,8 @@ function AdminLayout() {
               </span>
             </div>
 
-            {/* Notifications */}
-            <button onClick={() => setNotifOpen(true)} className="relative rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <span
-                  className="absolute -right-0.5 -top-0.5 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] h-5 w-5"
-                  title={`${unreadCount} unread`}
-                >{unreadCount}</span>
-              )}
-            </button>
-
-            <Dialog open={notifOpen} onOpenChange={(o) => !o && setNotifOpen(false)}>
-              <DialogContent className="admin-dialog sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="text-sm font-bold text-white">Notifications</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-400">Recent alerts</div>
-                    <div className="flex items-center gap-2">
-                      <button className="text-xs text-slate-500 hover:text-white" onClick={() => { markAllRead(); }}>
-                        Mark all read
-                      </button>
-                    </div>
-                  </div>
-                  <div className="max-h-64 overflow-auto space-y-2">
-                    {alertsLoading ? (
-                      <div className="text-xs text-slate-500">Loading…</div>
-                    ) : alerts.length === 0 ? (
-                      <div className="text-xs text-slate-500">No notifications</div>
-                    ) : (
-                      alerts.map((a) => (
-                        <div key={a.id} className="rounded-lg border border-slate-800/60 bg-slate-900/40 p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-semibold text-white">{a.title}</p>
-                              <p className="text-xs text-slate-400 mt-1">{a.detail}</p>
-                              <p className="text-xs text-slate-500 mt-1">{new Date(a.at).toLocaleString()}</p>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <button className="text-xs text-slate-400 hover:text-white" onClick={() => { if (a.to) navigate({ to: a.to }); }}>
-                                Open
-                              </button>
-                              <button className="text-xs text-red-400 hover:text-red-300" onClick={() => { dismiss(a.id); }}>
-                                Dismiss
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            {/* Notifications — live alert feed */}
+            <AdminNotificationBell />
 
             {/* Profile dropdown */}
             <div className="relative">

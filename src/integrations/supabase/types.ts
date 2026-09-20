@@ -91,45 +91,24 @@ export type Database = {
         }
         Relationships: []
       }
-      system_settings: {
+      network_settings: {
         Row: {
-          id: boolean
-          portal_name: string
-          support_phone: string | null
-          wifi_ssid: string
-          anti_tethering_enabled: boolean
-          maintenance_mode: boolean
-          guest_checkout_enabled: boolean
-          alert_router_offline: boolean
-          alert_tethering: boolean
           created_at: string
+          key: string
           updated_at: string
+          value: string
         }
         Insert: {
-          id?: boolean
-          portal_name?: string
-          support_phone?: string | null
-          wifi_ssid?: string
-          anti_tethering_enabled?: boolean
-          maintenance_mode?: boolean
-          guest_checkout_enabled?: boolean
-          alert_router_offline?: boolean
-          alert_tethering?: boolean
           created_at?: string
+          key: string
           updated_at?: string
+          value?: string
         }
         Update: {
-          id?: boolean
-          portal_name?: string
-          support_phone?: string | null
-          wifi_ssid?: string
-          anti_tethering_enabled?: boolean
-          maintenance_mode?: boolean
-          guest_checkout_enabled?: boolean
-          alert_router_offline?: boolean
-          alert_tethering?: boolean
           created_at?: string
+          key?: string
           updated_at?: string
+          value?: string
         }
         Relationships: []
       }
@@ -187,6 +166,48 @@ export type Database = {
           location?: string | null
           name?: string
           status?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          alert_router_offline: boolean
+          alert_tethering: boolean
+          anti_tethering_enabled: boolean
+          created_at: string | null
+          guest_checkout_enabled: boolean
+          id: boolean
+          maintenance_mode: boolean
+          portal_name: string
+          support_phone: string | null
+          updated_at: string | null
+          wifi_ssid: string
+        }
+        Insert: {
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
+          anti_tethering_enabled?: boolean
+          created_at?: string | null
+          guest_checkout_enabled?: boolean
+          id?: boolean
+          maintenance_mode?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          updated_at?: string | null
+          wifi_ssid?: string
+        }
+        Update: {
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
+          anti_tethering_enabled?: boolean
+          created_at?: string | null
+          guest_checkout_enabled?: boolean
+          id?: boolean
+          maintenance_mode?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          updated_at?: string | null
+          wifi_ssid?: string
         }
         Relationships: []
       }

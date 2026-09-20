@@ -13,9 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { getAdminReadAlerts, markAdminAlertsRead } from "@/lib/palnet.functions";
 
 export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertKind = "router" | "payment" | "expiry" | "voucher";
@@ -36,23 +34,9 @@ export function useNetworkSettings() {
   return useQuery({
     queryKey: ["network-settings"],
     queryFn: async () => {
-      // Single-row system_settings table - map typed columns back to string keys
-      const { data } = await supabase.from("system_settings").select("*").eq("id", true).maybeSingle();
+      const { data } = await supabase.from("network_settings").select("key, value");
       const map: Record<string, string> = {};
-      if (!data) return map;
-      map["portal_name"] = data.portal_name ?? "";
-      map["support_phone"] = "0703161031";
-      map["wifi_ssid"] = data.wifi_ssid ?? "";
-      map["anti_tethering_enabled"] = data.anti_tethering_enabled ? "true" : "false";
-      map["maintenance_mode"] = data.maintenance_mode ? "true" : "false";
-      map["guest_checkout_enabled"] = data.guest_checkout_enabled ? "true" : "false";
-      map["alert_router_offline"] = data.alert_router_offline ? "true" : "false";
-      map["alert_tethering"] = data.alert_tethering ? "true" : "false";
-      // Backwards-compatible alert keys with sensible defaults
-      map["alert_voucher_low_threshold"] = map["alert_voucher_low_threshold"] ?? "10";
-      map["alert_expiry_warning_minutes"] = map["alert_expiry_warning_minutes"] ?? "15";
-      map["alert_router_offline_enabled"] = data.alert_router_offline ? "true" : "false";
-      map["alert_failed_payment_enabled"] = map["alert_failed_payment_enabled"] ?? "true";
+      for (const row of data ?? []) map[row.key] = row.value;
       return map;
     },
     staleTime: 30_000,
@@ -199,29 +183,13 @@ export function useAdminAlerts() {
 
   /* Read/dismiss state kept per browser */
   const [read, setRead] = useState<string[]>([]);
-  const getReadsFn = useServerFn(getAdminReadAlerts);
-  const markReadsFn = useServerFn(markAdminAlertsRead);
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = localStorage.getItem(READ_KEY);
-        const local = raw ? (JSON.parse(raw) as string[]) : [];
-        try {
-          const res = await getReadsFn({});
-          if (res.ok) {
-            const merged = [...new Set([...(res.ids ?? []), ...local])];
-            setRead(merged);
-            try { localStorage.setItem(READ_KEY, JSON.stringify(merged.slice(-300))); } catch {}
-            return;
-          }
-        } catch {
-          /* ignore server failure, fall back to local */
-        }
-        if (local.length) setRead(local);
-      } catch {
-        /* ignore */
-      }
-    })();
+    try {
+      const raw = localStorage.getItem(READ_KEY);
+      if (raw) setRead(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const persist = useCallback((ids: string[]) => {
@@ -231,13 +199,6 @@ export function useAdminAlerts() {
     } catch {
       /* ignore */
     }
-    (async () => {
-      try {
-        await markReadsFn({ data: { ids } });
-      } catch {
-        /* ignore server write failure */
-      }
-    })();
   }, []);
 
   const alerts = query.data ?? [];
