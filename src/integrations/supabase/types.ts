@@ -169,6 +169,48 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          alert_router_offline: boolean
+          alert_tethering: boolean
+          anti_tethering_enabled: boolean
+          created_at: string | null
+          guest_checkout_enabled: boolean
+          id: boolean
+          maintenance_mode: boolean
+          portal_name: string
+          support_phone: string | null
+          updated_at: string | null
+          wifi_ssid: string
+        }
+        Insert: {
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
+          anti_tethering_enabled?: boolean
+          created_at?: string | null
+          guest_checkout_enabled?: boolean
+          id?: boolean
+          maintenance_mode?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          updated_at?: string | null
+          wifi_ssid?: string
+        }
+        Update: {
+          alert_router_offline?: boolean
+          alert_tethering?: boolean
+          anti_tethering_enabled?: boolean
+          created_at?: string | null
+          guest_checkout_enabled?: boolean
+          id?: boolean
+          maintenance_mode?: boolean
+          portal_name?: string
+          support_phone?: string | null
+          updated_at?: string | null
+          wifi_ssid?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount_kes: number
