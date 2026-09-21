@@ -434,40 +434,32 @@ export const payWithMpesa = createServerFn({ method: "POST" })
     });
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
-    const appBaseUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
-    const payHeroUrl = new URL("/api/payments/initiate", appBaseUrl.endsWith("/") ? appBaseUrl : `${appBaseUrl}/`).toString();
-
-    const payHeroRes = await fetch(payHeroUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phoneNumber: data.phone,
-        amount: Number(plan.price_kes),
-        planName: plan.name,
-        reference,
-      }),
+    const { requestStkPush } = await import("./payhero.server");
+    const push = await requestStkPush({
+      phone,
+      amount: Number(plan.price_kes),
+      reference,
+      description: plan.name,
     });
 
-    const payHeroData = (await payHeroRes.json().catch(() => ({}))) as {
-      success?: boolean;
-      message?: string;
-      reference?: string;
-    };
-
-    if (!payHeroRes.ok || payHeroData.success !== true) {
+    if (push.live) {
       return {
-        ok: false as const,
+        ok: true as const,
         simulated: false as const,
         reference,
-        message: payHeroData.message ?? "Payment could not be initiated.",
+        message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
       };
     }
 
+    const { activateSubscription } = await import("./palnet.server");
+    await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("transaction_reference", reference);
+    await activateSubscription({ userId: context.userId, planId: plan.id, phone });
+
     return {
       ok: true as const,
-      simulated: false as const,
-      reference: payHeroData.reference ?? reference,
-      message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
+      simulated: true as const,
+      reference,
+      message: "Test mode: payment simulated and your session is active.",
     };
   });
 
