@@ -94,6 +94,18 @@ export async function pingRouter(target: RouterTarget): Promise<{ online: boolea
 }
 
 export type MpesaCallbackPayload = {
+  /** PayHero (Lipwa) callback shape */
+  response?: {
+    ResultCode?: number;
+    Status?: string;
+    ExternalReference?: string;
+    CheckoutRequestID?: string;
+    MerchantRequestID?: string;
+    MpesaReceiptNumber?: string;
+    Amount?: number;
+    Phone?: string;
+  };
+  /** Legacy Safaricom Daraja shape (still accepted) */
   Body?: {
     stkCallback?: {
       ResultCode?: number;
