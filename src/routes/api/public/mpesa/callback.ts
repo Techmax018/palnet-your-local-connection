@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Safaricom Daraja STK callback. Confirms payment, creates the subscription and
+ * PayHero (Lipwa) M-Pesa callback. Confirms payment, creates the subscription and
  * authorizes the device on its router.
  */
 export const Route = createFileRoute("/api/public/mpesa/callback")({

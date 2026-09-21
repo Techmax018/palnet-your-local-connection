@@ -94,6 +94,18 @@ export async function pingRouter(target: RouterTarget): Promise<{ online: boolea
 }
 
 export type MpesaCallbackPayload = {
+  /** PayHero (Lipwa) callback shape */
+  response?: {
+    ResultCode?: number;
+    Status?: string;
+    ExternalReference?: string;
+    CheckoutRequestID?: string;
+    MerchantRequestID?: string;
+    MpesaReceiptNumber?: string;
+    Amount?: number;
+    Phone?: string;
+  };
+  /** Legacy Safaricom Daraja shape (still accepted) */
   Body?: {
     stkCallback?: {
       ResultCode?: number;
@@ -105,13 +117,23 @@ export type MpesaCallbackPayload = {
 };
 
 /**
- * Handle an M-Pesa STK confirmation: mark the transaction paid, create the
- * subscription and authorize the device on its router immediately.
+ * Handle a PayHero (or legacy Daraja) M-Pesa confirmation: mark the transaction
+ * paid, create the subscription and authorize the device on its router.
  */
 export async function processMpesaCallback(payload: MpesaCallbackPayload) {
+  const payHero = payload.response;
   const callback = payload.Body?.stkCallback;
-  const reference = callback?.CheckoutRequestID ?? callback?.MerchantRequestID;
+
+  const reference =
+    payHero?.ExternalReference ??
+    payHero?.CheckoutRequestID ??
+    callback?.CheckoutRequestID ??
+    callback?.MerchantRequestID;
   if (!reference) return { ok: false, message: "Missing checkout reference" };
+
+  const resultCode = payHero
+    ? (payHero.ResultCode ?? (payHero.Status === "Success" ? 0 : 1))
+    : (callback?.ResultCode ?? 1);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -123,9 +145,13 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   if (!tx) return { ok: false, message: "Unknown transaction reference" };
 
-  if ((callback?.ResultCode ?? 1) !== 0) {
+  if (resultCode !== 0) {
     await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id);
     return { ok: true, message: "Payment failed and recorded" };
+  }
+
+  if (tx.status === "completed") {
+    return { ok: true, message: "Already processed" };
   }
 
   await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("id", tx.id);
