@@ -152,18 +152,6 @@ export function CheckoutDialog({
         return;
       }
 
-      if (result.simulated) {
-        // Dev / no Daraja creds — skip straight to connected
-        setPayState({
-          step: "connected",
-          planName: plan.name,
-          endTime: new Date(Date.now() + 3_600_000).toISOString(),
-        });
-        await queryClient.invalidateQueries();
-        return;
-      }
-
-      // Live STK push sent — move to waiting_pin state
       setPayState({
         step: "waiting_pin",
         reference: result.reference,

@@ -56,40 +56,18 @@ export const startGuestPayment = createServerFn({ method: "POST" })
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
     const { requestStkPush } = await import("./payhero.server");
-    const push = await requestStkPush({
+    await requestStkPush({
       phone,
       amount: Number(plan.price_kes),
       reference,
       description: plan.name,
     });
 
-    if (push.live) {
-      return {
-        ok: true as const,
-        simulated: false as const,
-        reference,
-        message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
-      };
-    }
-
-    // No live PayHero credentials (or PayHero unreachable): confirm locally so
-    // the portal stays usable during setup.
-    const { activateSubscription } = await import("./palnet.server");
-    await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("transaction_reference", reference);
-    await activateSubscription({
-      userId: null,
-      planId: plan.id,
-      phone,
-      macAddress: data.macAddress ?? null,
-      ipAddress: data.ipAddress ?? null,
-      deviceLabel: data.deviceLabel ?? null,
-    });
-
     return {
       ok: true as const,
-      simulated: true as const,
+      simulated: false as const,
       reference,
-      message: "Test mode: payment simulated and your session is active.",
+      message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
     };
   });
 
@@ -435,31 +413,18 @@ export const payWithMpesa = createServerFn({ method: "POST" })
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
     const { requestStkPush } = await import("./payhero.server");
-    const push = await requestStkPush({
+    await requestStkPush({
       phone,
       amount: Number(plan.price_kes),
       reference,
       description: plan.name,
     });
 
-    if (push.live) {
-      return {
-        ok: true as const,
-        simulated: false as const,
-        reference,
-        message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
-      };
-    }
-
-    const { activateSubscription } = await import("./palnet.server");
-    await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("transaction_reference", reference);
-    await activateSubscription({ userId: context.userId, planId: plan.id, phone });
-
     return {
       ok: true as const,
-      simulated: true as const,
+      simulated: false as const,
       reference,
-      message: "Test mode: payment simulated and your session is active.",
+      message: `Check ${data.phone} and enter your M-Pesa PIN to complete the payment.`,
     };
   });
 

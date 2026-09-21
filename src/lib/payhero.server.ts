@@ -1,9 +1,8 @@
 /**
  * PayHero (Lipwa) M-Pesa STK Push.
  *
- * Runs live when the PayHero credentials are configured as secrets; otherwise it
- * reports `live: false` so the caller can confirm the payment locally and keep
- * the billing flow usable during setup.
+ * This is the live payment provider for PalNet. Missing configuration is a
+ * hard failure so the app never silently falls back into mock billing.
  */
 
 const PAYHERO_BASE = "https://backend.payhero.co.ke/api/v2";
@@ -39,8 +38,9 @@ export async function requestStkPush(input: {
   const callback = callbackUrl();
 
   if (!auth || !channelId || !callback) {
-    console.info("[payhero] credentials missing — simulating STK push", input.reference);
-    return { live: false, message: "Simulated STK push" };
+    throw new Error(
+      "PayHero is not configured. Set PAYHERO_BASIC_AUTH, PAYHERO_CHANNEL_ID, and PAYHERO_CALLBACK_URL.",
+    );
   }
 
   let res: Response;
@@ -60,13 +60,13 @@ export async function requestStkPush(input: {
     });
   } catch (error) {
     console.error("[payhero] request failed", error);
-    return { live: false, message: "Could not reach PayHero" };
+    throw new Error("Could not reach the PayHero API.");
   }
 
   const bodyText = await res.text();
   if (!res.ok) {
     console.error(`[payhero] stk push failed [${res.status}]: ${bodyText}`);
-    return { live: false, message: "STK push rejected by PayHero" };
+    throw new Error("STK push rejected by PayHero.");
   }
 
   let parsed: { success?: boolean; status?: string; reference?: string; CheckoutRequestID?: string; error_message?: string } = {};
@@ -78,7 +78,7 @@ export async function requestStkPush(input: {
 
   if (parsed.success === false) {
     console.error(`[payhero] stk push rejected: ${bodyText}`);
-    return { live: false, message: parsed.error_message ?? "STK push rejected by PayHero" };
+    throw new Error(parsed.error_message ?? "STK push rejected by PayHero.");
   }
 
   return {
