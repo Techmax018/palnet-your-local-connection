@@ -29,16 +29,28 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function resolveEnvValue(primary: string, fallbacks: string[]): string | undefined {
+  for (const key of [primary, ...fallbacks]) {
+    const value = process.env[key];
+    if (value && value.trim()) return value;
+  }
+  return undefined;
+}
+
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env['SUPABASE_URL'];
-  const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  const SUPABASE_URL = resolveEnvValue('SUPABASE_URL', ['VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']);
+  const SUPABASE_SERVICE_ROLE_KEY = resolveEnvValue('SUPABASE_SERVICE_ROLE_KEY', [
+    'SUPABASE_SECRET_KEY',
+    'VITE_SUPABASE_SERVICE_ROLE_KEY',
+    'VITE_SUPABASE_SECRET_KEY',
+  ]);
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
+      ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Add the actual Supabase service-role key to your runtime environment.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
