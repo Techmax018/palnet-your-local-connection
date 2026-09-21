@@ -33,7 +33,7 @@ export async function requestStkPush(input: {
   amount: number;
   reference: string;
   description: string;
-}): Promise<{ live: boolean; message: string; providerReference?: string }> {
+}): Promise<{ live: boolean; message: string; providerReference?: string | undefined }> {
   const auth = basicAuth();
   const channelId = Number(process.env["PAYHERO_CHANNEL_ID"] ?? "");
   const callback = callbackUrl();
