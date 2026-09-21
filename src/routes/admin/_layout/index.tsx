@@ -649,29 +649,27 @@ function AdminDashboard() {
               </div>
               <span className="text-xs text-slate-600">Completed M-Pesa only</span>
             </div>
-            <div className="flex h-32 items-end gap-2">
+            <div className="flex items-end gap-2">
               {stats.trend.map((d) => {
                 const max = Math.max(...stats.trend.map((t) => t.revenue), 1);
-                const pct = Math.round((d.revenue / max) * 100);
+                const barPx = Math.max(Math.round((d.revenue / max) * 104), 4);
                 return (
                   <div key={d.date} className="group flex flex-1 flex-col items-center gap-1.5">
-                    <span className="text-xs tabular-nums text-slate-500 opacity-0 transition-opacity group-hover:opacity-100">
-                      {d.revenue.toLocaleString()}
+                    <span className="text-xs tabular-nums text-cyan-400/80">
+                      {d.revenue > 0 ? d.revenue.toLocaleString() : ""}
                     </span>
-                    <div className="flex w-full flex-1 items-end">
-                      <div
-                        className="w-full rounded-t-md transition-all"
-                        style={{
-                          height: `${Math.max(pct, 3)}%`,
-                          background:
-                            d.revenue > 0
-                              ? "linear-gradient(180deg,#00f3ff,#0891b2)"
-                              : "rgba(100,116,139,0.25)",
-                          boxShadow: d.revenue > 0 ? "0 0 10px rgba(0,243,255,0.25)" : "none",
-                        }}
-                        title={`${d.date}: KES ${d.revenue.toLocaleString()} · ${d.sales} sale(s)`}
-                      />
-                    </div>
+                    <div
+                      className="w-full rounded-t-md transition-all"
+                      style={{
+                        height: `${barPx}px`,
+                        background:
+                          d.revenue > 0
+                            ? "linear-gradient(180deg,#00f3ff,#0891b2)"
+                            : "rgba(100,116,139,0.25)",
+                        boxShadow: d.revenue > 0 ? "0 0 10px rgba(0,243,255,0.25)" : "none",
+                      }}
+                      title={`${d.date}: KES ${d.revenue.toLocaleString()} · ${d.sales} sale(s)`}
+                    />
                     <span className="text-xs text-slate-500">{d.day}</span>
                   </div>
                 );
