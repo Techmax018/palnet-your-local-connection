@@ -117,13 +117,23 @@ export type MpesaCallbackPayload = {
 };
 
 /**
- * Handle an M-Pesa STK confirmation: mark the transaction paid, create the
- * subscription and authorize the device on its router immediately.
+ * Handle a PayHero (or legacy Daraja) M-Pesa confirmation: mark the transaction
+ * paid, create the subscription and authorize the device on its router.
  */
 export async function processMpesaCallback(payload: MpesaCallbackPayload) {
+  const payHero = payload.response;
   const callback = payload.Body?.stkCallback;
-  const reference = callback?.CheckoutRequestID ?? callback?.MerchantRequestID;
+
+  const reference =
+    payHero?.ExternalReference ??
+    payHero?.CheckoutRequestID ??
+    callback?.CheckoutRequestID ??
+    callback?.MerchantRequestID;
   if (!reference) return { ok: false, message: "Missing checkout reference" };
+
+  const resultCode = payHero
+    ? (payHero.ResultCode ?? (payHero.Status === "Success" ? 0 : 1))
+    : (callback?.ResultCode ?? 1);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
