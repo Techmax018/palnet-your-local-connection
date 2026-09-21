@@ -145,9 +145,13 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   if (!tx) return { ok: false, message: "Unknown transaction reference" };
 
-  if ((callback?.ResultCode ?? 1) !== 0) {
+  if (resultCode !== 0) {
     await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id);
     return { ok: true, message: "Payment failed and recorded" };
+  }
+
+  if (tx.status === "completed") {
+    return { ok: true, message: "Already processed" };
   }
 
   await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("id", tx.id);
