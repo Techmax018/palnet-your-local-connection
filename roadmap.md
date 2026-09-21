@@ -8,3 +8,4 @@
       anti-tethering, alert thresholds) + read-only credential status
 - [ ] Dashboard: settings-aware + realistic live stats (revenue today/7d, usage, alerts)
 - [ ] Verify every admin page in preview browser
+- [ ] Connect live Safaricom Daraja M-Pesa (request keys, set callback URL, verify STK push)
