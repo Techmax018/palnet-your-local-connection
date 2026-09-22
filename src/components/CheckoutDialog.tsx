@@ -209,16 +209,16 @@ export function CheckoutDialog({
         <DialogContent className="sm:max-w-xs text-center">
           <div className="flex flex-col items-center gap-4 py-4">
             {/* Animated wifi icon */}
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-2xl"
-              style={{
-                background: "linear-gradient(135deg,rgba(0,243,255,0.2),rgba(0,243,255,0.05))",
-                border: "1px solid rgba(0,243,255,0.3)",
-                boxShadow: "0 0 30px rgba(0,243,255,0.25)",
-              }}
-            >
-              <Wifi className="size-8 text-cyan-400" />
-            </div>
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg,rgba(0,243,255,0.02),rgba(0,243,255,0.01))",
+                  border: "1px solid rgba(0,243,255,0.06)",
+                  boxShadow: "0 0 20px rgba(0,243,255,0.12)",
+                }}
+              >
+                <img src="/__l5e/assets-v1/d5f17890-e832-47f2-818f-8d165e2da0fb/palnet-logo.jpg" alt="PalNet" className="h-12 w-12 object-contain" />
+              </div>
 
             <div>
               <p className="font-display text-base font-black text-foreground">

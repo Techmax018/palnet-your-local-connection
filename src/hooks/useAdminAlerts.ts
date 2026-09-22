@@ -85,7 +85,8 @@ export function useAdminAlerts() {
         for (const r of routers.data ?? []) {
           if (r.status === "online") continue;
           alerts.push({
-            id: `router:${r.id}:${r.last_ping ?? "never"}`,
+            // Use a stable id so dismissed router alerts stay dismissed even when last_ping changes
+            id: `router:${r.id}`,
             kind: "router",
             severity: "critical",
             title: `Router offline — ${r.name}`,
@@ -139,7 +140,8 @@ export function useAdminAlerts() {
       for (const [planId, count] of unusedByPlan) {
         if (count >= voucherLow) continue;
         alerts.push({
-          id: `voucher:${planId}:${count}`,
+          // Stable id per plan so dismiss persists across count changes
+          id: `voucher:${planId}`,
           kind: "voucher",
           severity: count === 0 ? "critical" : "warning",
           title:

@@ -877,6 +877,28 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
         planName: (tx.internet_plans as any)?.name ?? null,
         message: "Payment confirmed — you are online!",
       };
+
+      /** Admin: delete a router. */
+      export const deleteRouter = createServerFn({ method: "POST" })
+        .middleware([requireSupabaseAuth])
+        .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+        .handler(async ({ data, context }) => {
+          await assertAdmin(context);
+          const { error } = await context.supabase.from("routers").delete().eq("id", data.id);
+          if (error) return { ok: false as const, message: error.message };
+          return { ok: true as const, message: "Router deleted" };
+        });
+
+      /** Admin: delete a voucher. */
+      export const deleteVoucher = createServerFn({ method: "POST" })
+        .middleware([requireSupabaseAuth])
+        .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+        .handler(async ({ data, context }) => {
+          await assertAdmin(context);
+          const { error } = await context.supabase.from("vouchers").delete().eq("id", data.id);
+          if (error) return { ok: false as const, message: error.message };
+          return { ok: true as const, message: "Voucher deleted" };
+        });
     }
 
     return { status: "pending", subscriptionEndTime: null, planName: (tx.internet_plans as any)?.name ?? null, message: "Waiting for M-Pesa confirmation…" };

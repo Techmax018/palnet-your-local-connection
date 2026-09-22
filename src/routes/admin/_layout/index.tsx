@@ -859,7 +859,7 @@ function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {(transactions ?? []).map((tx) => (
+                    {(transactions ?? []).slice(0, 15).map((tx) => (
                       <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
                         <td className="px-3 py-2.5 font-mono tabular-nums text-slate-500 whitespace-nowrap">
                           {new Date(tx.created_at).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })}

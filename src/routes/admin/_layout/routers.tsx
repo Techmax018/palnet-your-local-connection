@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Loader2, RefreshCw, Pencil, Circle, Activity } from "lucide-react";
+import { Trash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ const EMPTY = { name: "", ip_address: "", api_port: 8728, location: "" };
 function AdminRouters() {
   const queryClient = useQueryClient();
   const save = useServerFn(saveRouter);
+  const del = useServerFn(async (data: { id: string } | null) => ({ ok: false, message: "noop" }));
   const pingFn = useServerFn(testRouterConnection);
   const [editing, setEditing] = useState<Router | null>(null);
   const [form, setForm] = useState(EMPTY);
@@ -140,6 +142,27 @@ function AdminRouters() {
                         </Button>
                         <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" onClick={() => openEdit(r)}>
                           <Pencil className="size-3" /> Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive h-7 gap-1 text-xs"
+                          onClick={async () => {
+                            if (!confirm(`Delete router ${r.name}? This cannot be undone.`)) return;
+                            setBusy(r.id);
+                            try {
+                              const res = await fetch('/_rsc', { method: 'POST' });
+                            } catch {}
+                            try {
+                              const { deleteRouter } = await import("@/lib/palnet.functions");
+                              const result = await deleteRouter({ data: { id: r.id } });
+                              toast[result.ok ? 'success' : 'error'](result.message);
+                              if (result.ok) await queryClient.invalidateQueries({ queryKey: ['admin-routers'] });
+                            } catch (e) { toast.error('Failed to delete router'); }
+                            finally { setBusy(null); }
+                          }}
+                        >
+                          <Trash className="size-3" /> Delete
                         </Button>
                       </div>
                     </td>

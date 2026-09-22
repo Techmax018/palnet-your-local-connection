@@ -144,19 +144,35 @@ function AdminVouchers() {
                 <tbody className="divide-y divide-slate-800/60">
                   {(recent ?? []).map((v: any) => (
                     <tr key={v.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold tracking-[0.25em] text-white">{v.code}</td>
-                      <td className="px-4 py-3 text-slate-400">{v.internet_plans?.name ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          v.status === "unused" ? "bg-emerald-500/15 text-emerald-400" :
-                          v.status === "active" ? "bg-cyan-500/15 text-cyan-400" :
-                          "bg-slate-700 text-slate-400"
-                        }`}>
-                          {v.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">{new Date(v.created_at).toLocaleDateString("en-KE")}</td>
-                    </tr>
+                          <td className="px-4 py-3 font-mono font-bold tracking-[0.25em] text-white">{v.code}</td>
+                          <td className="px-4 py-3 text-slate-400">{v.internet_plans?.name ?? "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              v.status === "unused" ? "bg-emerald-500/15 text-emerald-400" :
+                              v.status === "active" ? "bg-cyan-500/15 text-cyan-400" :
+                              "bg-slate-700 text-slate-400"
+                            }`}>
+                              {v.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">{new Date(v.created_at).toLocaleDateString("en-KE")}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              className="text-xs text-destructive hover:underline"
+                              onClick={async () => {
+                                if (!confirm(`Delete voucher ${v.code}? This cannot be undone.`)) return;
+                                try {
+                                  const { deleteVoucher } = await import("@/lib/palnet.functions");
+                                  const res = await deleteVoucher({ data: { id: v.id } });
+                                  toast[res.ok ? 'success' : 'error'](res.message);
+                                  if (res.ok) await queryClient.invalidateQueries({ queryKey: ['admin-vouchers'] });
+                                } catch {
+                                  toast.error('Failed to delete voucher');
+                                }
+                              }}
+                            >Delete</button>
+                          </td>
+                        </tr>
                   ))}
                   {!recent?.length && (
                     <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600">No vouchers generated yet</td></tr>
