@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Loader2, RefreshCw, Pencil, Circle, Activity } from "lucide-react";
-import { Trash } from "lucide-react";
+import { Trash, Copy, Terminal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,9 @@ function AdminRouters() {
   const [form, setForm] = useState(EMPTY);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [provisionOpen, setProvisionOpen] = useState(false);
+  const [provisionSite, setProvisionSite] = useState("");
+  const [provisionToken, setProvisionToken] = useState<string | null>(null);
 
   const { data: routers, isLoading } = useQuery({
     queryKey: ["admin-routers"],
@@ -43,6 +46,14 @@ function AdminRouters() {
       return (data ?? []) as Router[];
     },
   });
+
+  async function createProvisionToken(siteIdentity: string) {
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const token = `prov_${Math.random().toString(36).slice(2, 12)}`;
+    const { error } = await supabase.from("provision_tokens").insert({ token, site_identity: siteIdentity, is_used: false, expires_at: expiresAt, created_at: new Date().toISOString() });
+    if (error) throw error;
+    return token;
+  }
 
   function openNew() {
     setEditing(null); setForm(EMPTY); setDialogOpen(true);
@@ -101,6 +112,9 @@ function AdminRouters() {
                   <th className="px-4 py-3 text-left font-medium">IP : Port</th>
                   <th className="px-4 py-3 text-left font-medium">Location</th>
                   <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">CPU</th>
+                  <th className="px-4 py-3 text-left font-medium">Free RAM</th>
+                  <th className="px-4 py-3 text-left font-medium">Uptime</th>
                   <th className="px-4 py-3 text-left font-medium">Last Ping</th>
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
@@ -126,6 +140,9 @@ function AdminRouters() {
                         )}
                       </span>
                     </td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{(r as any).cpu_load ?? "—"}%</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{(r as any).free_memory ?? "—"}MB</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{(r as any).uptime ?? "—"}</td>
                     <td className="px-4 py-3 font-mono text-slate-500">
                       {r.last_ping
                         ? new Date(r.last_ping).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })
@@ -142,6 +159,9 @@ function AdminRouters() {
                         </Button>
                         <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" onClick={() => openEdit(r)}>
                           <Pencil className="size-3" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" className="admin-btn-outline h-7 gap-1 text-xs" onClick={async () => { setProvisionSite(r.name); setProvisionToken(null); setProvisionOpen(true); }}>
+                          <Terminal className="size-3" /> Provision
                         </Button>
                         <Button
                           variant="ghost"
@@ -169,7 +189,7 @@ function AdminRouters() {
                   </tr>
                 ))}
                 {!routers?.length && (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-600">No routers added yet</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-600">No routers added yet</td></tr>
                 )}
               </tbody>
             </table>
@@ -207,6 +227,37 @@ function AdminRouters() {
               {busy === "save" && <Loader2 className="animate-spin size-4" />}
               {editing ? "Save Changes" : "Add Router"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={provisionOpen} onOpenChange={(o) => !o && setProvisionOpen(false)}>
+        <DialogContent className="admin-dialog sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white text-sm font-bold">Provision Router</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1.5">
+              <Label className="admin-label">Site Identity</Label>
+              <Input value={provisionSite} onChange={(e) => setProvisionSite(e.target.value)} className="admin-input" placeholder="SITE_IDENTITY" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="admin-label">Provision Command</Label>
+              <div className="font-mono text-xs bg-slate-900 p-2 rounded">{provisionToken ? `/tool fetch url="https://palnet-wifi.lovable.app/api/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc` : "Click 'Create Token' to generate command"}</div>
+            </div>
+            <div className="flex gap-2">
+              <Button className="admin-btn-primary flex-1" onClick={async () => {
+                try {
+                  const token = await createProvisionToken(provisionSite || `site_${Date.now()}`);
+                  setProvisionToken(token);
+                } catch (e) { toast.error('Failed to create token'); }
+              }}>Create Token</Button>
+              <Button className="admin-btn-outline" onClick={async () => {
+                if (!provisionToken) return;
+                const cmd = `/tool fetch url="https://palnet-wifi.lovable.app/api/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc`;
+                try { await navigator.clipboard.writeText(cmd); toast.success('Copied to clipboard'); } catch { toast.error('Copy failed'); }
+              }}><Copy className="size-4" /> Copy Command</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
