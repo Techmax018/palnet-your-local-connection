@@ -113,7 +113,10 @@ export function AdminNotificationBell() {
                 </p>
               </div>
               <button
-                onClick={markAllRead}
+                onClick={() => {
+                  markAllRead();
+                  setOpen(false);
+                }}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-cyan-400"
               >
                 <CheckCheck className="size-3" /> Mark all read

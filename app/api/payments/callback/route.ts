@@ -88,109 +88,77 @@ async function getSupabaseAdmin() {
 }
 
 export async function POST(request: Request) {
-  let payload: PayHeroCallback | null = null;
-
+  let raw: unknown = null;
   try {
-    payload = (await request.json()) as PayHeroCallback;
-  } catch (error) {
-    console.error("[payhero-callback] invalid JSON payload", error);
-    return NextResponse.json({ success: false, message: "Invalid payload" }, { status: 200 });
+    raw = await request.json();
+  } catch (err) {
+    console.error("[payhero-callback] invalid JSON payload", err);
+    return NextResponse.json({ success: false, message: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Expect strict PayHero structure: { response: { Status, Amount, MpesaReceiptNumber, Phone, CheckoutRequestID, ResultDesc } }
+  const body = raw as { response?: Record<string, unknown> } | undefined;
+  const resp = body?.response;
+
+  if (!resp || typeof resp !== "object") {
+    console.error("[payhero-callback] missing response object");
+    return NextResponse.json({ success: false, message: "Invalid callback shape" }, { status: 400 });
+  }
+
+  const Status = resp.Status;
+  const Amount = resp.Amount;
+  const MpesaReceiptNumber = resp.MpesaReceiptNumber;
+  const Phone = resp.Phone;
+  const CheckoutRequestID = resp.CheckoutRequestID;
+  const ResultDesc = resp.ResultDesc;
+
+  if (typeof Status !== "boolean" || typeof Amount !== "number" || typeof MpesaReceiptNumber !== "string" || typeof Phone !== "string") {
+    console.error("[payhero-callback] invalid response field types", { Status, Amount, MpesaReceiptNumber, Phone });
+    return NextResponse.json({ success: false, message: "Invalid callback fields" }, { status: 400 });
   }
 
   try {
-    const amount = parseAmount(
-      payload.amount ??
-        payload.amount_kes ??
-        (typeof payload.data?.amount === "number" || typeof payload.data?.amount === "string"
-          ? payload.data.amount
-          : null) ??
-        (typeof payload.data?.amount_kes === "number" || typeof payload.data?.amount_kes === "string"
-          ? payload.data.amount_kes
-          : null) ??
-        (typeof payload.data?.total_amount === "number" || typeof payload.data?.total_amount === "string"
-          ? payload.data.total_amount
-          : null) ??
-        null,
-    );
-
-    const phone = normalizePhone(
-      payload.phone_number ??
-        payload.customer_phone ??
-        payload.phone ??
-        payload.msisdn ??
-        (typeof payload.data?.phone_number === "string" ? payload.data.phone_number : null) ??
-        (typeof payload.data?.customer_phone === "string" ? payload.data.customer_phone : null) ??
-        null,
-    );
-
-    const reference =
-      payload.reference ??
-      payload.transaction_id ??
-      payload.external_reference ??
-      payload.id ??
-      (typeof payload.data?.reference === "string" ? payload.data.reference : null) ??
-      (typeof payload.data?.transaction_id === "string" ? payload.data.transaction_id : null) ??
-      (typeof payload.data?.external_reference === "string" ? payload.data.external_reference : null) ??
-      `PH-${Date.now()}`;
-
-    const mappedStatus = normalizeStatus(
-      typeof payload.status === "string" ? payload.status : null ??
-        (typeof payload.data?.status === "string" ? payload.data.status : null) ??
-        (typeof payload.data?.state === "string" ? payload.data.state : null),
-    );
-
     const supabase = await getSupabaseAdmin();
 
-    const { data: existing, error: selectError } = await supabase
+    const reference = String(CheckoutRequestID ?? MpesaReceiptNumber);
+    const phone = normalizePhone(Phone) ?? null;
+    const amount = Amount;
+    const mappedStatus = Status ? "completed" : "failed";
+
+    const { data: existing } = await supabase
       .from("transactions")
-      .select("id, transaction_reference, status, phone_number, amount_kes")
+      .select("id")
       .eq("transaction_reference", reference)
       .maybeSingle();
 
-    if (selectError) {
-      console.error("[payhero-callback] select error", selectError);
-    }
-
     const updatePayload: Record<string, unknown> = {
-      payment_method: payload.provider ?? payload.payment_method ?? "payhero",
+      payment_method: "payhero",
       status: mappedStatus,
       transaction_reference: reference,
       updated_at: new Date().toISOString(),
     };
-
-    if (amount != null) updatePayload.amount_kes = amount;
+    updatePayload.amount_kes = amount;
     if (phone) updatePayload.phone_number = phone;
 
     if (existing?.id) {
       const { error: updateError } = await supabase.from("transactions").update(updatePayload).eq("id", existing.id);
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
     } else {
       const insertPayload: Record<string, unknown> = {
-        payment_method: payload.provider ?? payload.payment_method ?? "payhero",
+        payment_method: "payhero",
         status: mappedStatus,
-        amount_kes: amount ?? 0,
+        amount_kes: amount,
         phone_number: phone,
         transaction_reference: reference,
         created_at: new Date().toISOString(),
       };
-
       const { error: insertError } = await supabase.from("transactions").insert(insertPayload);
-      if (insertError) {
-        throw insertError;
-      }
+      if (insertError) throw insertError;
     }
 
-    return NextResponse.json(
-      { success: true, message: "Accepted", status: mappedStatus },
-      { status: 200 },
-    );
+    return NextResponse.json({ success: true, message: "Accepted", status: mappedStatus }, { status: 200 });
   } catch (error) {
     console.error("[payhero-callback] callback processing error", error);
-    return NextResponse.json(
-      { success: false, message: "Callback processed with error" },
-      { status: 200 },
-    );
+    return NextResponse.json({ success: false, message: "Callback processing error" }, { status: 500 });
   }
 }

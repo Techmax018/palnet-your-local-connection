@@ -6,8 +6,10 @@
  * of the portal page routes admins to /admin/login.
  */
 import { Link } from "@tanstack/react-router";
+import { useNetworkSettings } from "@/hooks/useAdminAlerts";
 
 export function PalNetHeader({ online = true }: { online?: boolean }) {
+  const { data: settings } = useNetworkSettings();
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
@@ -30,6 +32,9 @@ export function PalNetHeader({ online = true }: { online?: boolean }) {
                 }`}
               />
               {online ? "Reliable Wifi Billing & Connectivity" : "Network unreachable"}
+              {settings?.["support_phone"] ? (
+                <span className="ml-2 text-xs text-slate-400">· Support {settings["support_phone"]}</span>
+              ) : null}
             </span>
           </span>
         </Link>

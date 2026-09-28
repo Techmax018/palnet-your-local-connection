@@ -580,9 +580,8 @@ function AdminDashboard() {
             Network Overview & Control Center
           </h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            {settings?.["hotspot_ssid"] ?? "PalNet-WiFi"} · support{" "}
-            {settings?.["support_phone"] ?? "—"} · device limit{" "}
-            {settings?.["max_devices_per_session"] ?? "1"} · tethering block{" "}
+            {settings?.["hotspot_ssid"] ?? "PalNet-WiFi"} · device limit {" "}
+            {settings?.["max_devices_per_session"] ?? "1"} · tethering block {" "}
             {settings?.["anti_tethering_enabled"] === "true" ? "on" : "off"} · live every 30s
           </p>
         </div>

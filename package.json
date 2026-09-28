@@ -1,6 +1,8 @@
 {
   "name": "tanstack_start_ts",
+  "projectName": "Palnet",
   "private": true,
+  "author": "maxdevs",
   "sideEffects": false,
   "type": "module",
   "scripts": {

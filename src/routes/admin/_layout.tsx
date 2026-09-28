@@ -484,11 +484,7 @@ function AdminLayout() {
           </button>
 
           {/* Page title */}
-          <p className="hidden text-sm font-semibold tracking-wide text-white sm:block">
-            PalNet{" "}
-            <span className="text-slate-600">|</span>{" "}
-            <span style={{ color: "#00f3ff" }}>Admin Control Panel</span>
-          </p>
+          {/* Page title removed per admin UI cleanup */}
 
           {/* Global search */}
           <div className="mx-auto w-full max-w-xs lg:mx-0 lg:ml-4 lg:max-w-sm">
@@ -508,14 +504,6 @@ function AdminLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
-            {/* System online badge */}
-            <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 sm:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 pulse-live" />
-              <span className="text-xs font-medium text-emerald-400">
-                System Online
-              </span>
-            </div>
-
             {/* Notifications — live alert feed */}
             <AdminNotificationBell />
 
