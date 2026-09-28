@@ -173,7 +173,7 @@ function AdminLogin() {
           PalNet ISP Management · Restricted Access
           <br />
           <span className="text-slate-700">
-            Admin access is granted via Supabase → user_roles table.
+            
           </span>
         </p>
       </div>
