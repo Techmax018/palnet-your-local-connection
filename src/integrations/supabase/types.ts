@@ -136,6 +136,71 @@ export type Database = {
         }
         Relationships: []
       }
+      provision_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_used: boolean | null
+          site_identity: string
+          token: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          is_used?: boolean | null
+          site_identity: string
+          token: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_used?: boolean | null
+          site_identity?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      router_heartbeats: {
+        Row: {
+          cpu: number | null
+          created_at: string | null
+          id: string
+          memory: number | null
+          router_id: string | null
+          status: string | null
+          uptime: string | null
+        }
+        Insert: {
+          cpu?: number | null
+          created_at?: string | null
+          id?: string
+          memory?: number | null
+          router_id?: string | null
+          status?: string | null
+          uptime?: string | null
+        }
+        Update: {
+          cpu?: number | null
+          created_at?: string | null
+          id?: string
+          memory?: number | null
+          router_id?: string | null
+          status?: string | null
+          uptime?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "router_heartbeats_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "routers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routers: {
         Row: {
           api_port: number
