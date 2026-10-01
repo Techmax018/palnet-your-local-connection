@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Download } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Download, Trash2, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,8 @@ type Tx = {
 function AdminTransactions() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ["admin-transactions"],
@@ -47,9 +50,39 @@ function AdminTransactions() {
     return matchSearch && (statusFilter === "all" || tx.status === statusFilter);
   });
 
+  const visibleIds = filtered.map((tx) => tx.id);
+  const allVisibleSelected = filtered.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
   const revenue = filtered
     .filter((tx) => tx.status === "completed")
     .reduce((s, tx) => s + Number(tx.amount_kes), 0);
+
+  const toggleTransaction = (id: string) => {
+    setSelectedIds((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]);
+  };
+
+  const toggleSelectVisible = () => {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) {
+        return current.filter((id) => !visibleIds.includes(id));
+      }
+      return [...new Set([...current, ...visibleIds])];
+    });
+  };
+
+  const deleteSelected = useMutation({
+    mutationFn: async () => {
+      if (!selectedIds.length) return;
+      const { error } = await supabase.from("transactions").delete().in("id", selectedIds);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setSelectedIds([]);
+      await queryClient.invalidateQueries({ queryKey: ["admin-transactions"] });
+    },
+  });
 
   function exportCsv() {
     const header = "Date,Phone,Plan,Amount,Method,Reference,Status\n";
@@ -108,6 +141,32 @@ function AdminTransactions() {
         </Select>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="admin-btn-outline gap-1.5 text-xs h-8"
+            onClick={toggleSelectVisible}
+            disabled={!filtered.length}
+          >
+            <CheckCheck className="size-3.5" />
+            {allVisibleSelected ? "Clear visible" : "Select visible"}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="gap-1.5 text-xs h-8"
+            onClick={() => deleteSelected.mutate()}
+            disabled={!selectedIds.length || deleteSelected.isPending}
+          >
+            <Trash2 className="size-3.5" />
+            {deleteSelected.isPending ? "Deleting..." : `Clear selected${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
+          </Button>
+        </div>
+        <p className="text-[11px] text-slate-400">{selectedIds.length} selected</p>
+      </div>
+
       <div className="admin-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-2">{[0,1,2,3,4].map((i) => <Skeleton key={i} className="h-9 admin-skeleton rounded" />)}</div>
@@ -116,6 +175,13 @@ function AdminTransactions() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-500">
+                  <th className="px-3 py-3 text-left font-medium w-10">
+                    <Checkbox
+                      checked={allVisibleSelected && !!filtered.length}
+                      onCheckedChange={toggleSelectVisible}
+                      aria-label="Select visible transactions"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left font-medium">Timestamp</th>
                   <th className="px-4 py-3 text-left font-medium">Plan Name</th>
                   <th className="px-4 py-3 text-left font-medium">Customer Phone</th>
@@ -127,6 +193,13 @@ function AdminTransactions() {
               <tbody className="divide-y divide-slate-800/60">
                 {filtered.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-3 py-3 align-middle">
+                      <Checkbox
+                        checked={selectedIds.includes(tx.id)}
+                        onCheckedChange={() => toggleTransaction(tx.id)}
+                        aria-label={`Select transaction ${tx.id}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 font-mono text-slate-500 tabular-nums whitespace-nowrap">
                       {new Date(tx.created_at).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })}
                     </td>
@@ -146,7 +219,7 @@ function AdminTransactions() {
                   </tr>
                 ))}
                 {!filtered.length && (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-600">No transactions found</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-600">No transactions found</td></tr>
                 )}
               </tbody>
             </table>
