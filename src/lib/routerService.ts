@@ -163,11 +163,14 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
     return { ok: false, message: "Amount mismatch" };
   }
 
-  if (tx.status === "completed") {
-    return { ok: true, message: "Already processed" };
-  }
-
-  await supabaseAdmin.from("transactions").update({ status: "completed" }).eq("id", tx.id);
+  // Atomic claim so a replayed callback can't activate twice.
+  const { data: claimed } = await supabaseAdmin
+    .from("transactions")
+    .update({ status: "completed" })
+    .eq("id", tx.id)
+    .eq("status", "pending")
+    .select("id");
+  if (!claimed?.length) return { ok: true, message: "Already processed" };
 
   const { activateSubscription } = await import("./palnet.server");
   const result = await activateSubscription({
