@@ -52,9 +52,14 @@ function AdminTransactions() {
 
   function exportCsv() {
     const header = "Date,Phone,Plan,Amount,Method,Reference,Status\n";
+    const cell = (v: unknown) => {
+      let t = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
     const rows = filtered.map((tx) =>
       [new Date(tx.created_at).toISOString(), tx.phone_number ?? "", tx.internet_plans?.name ?? "",
-        tx.amount_kes, tx.payment_method, tx.transaction_reference ?? "", tx.status].join(",")
+        tx.amount_kes, tx.payment_method, tx.transaction_reference ?? "", tx.status].map(cell).join(",")
     ).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);

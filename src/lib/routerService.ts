@@ -131,23 +131,36 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
     callback?.MerchantRequestID;
   if (!reference) return { ok: false, message: "Missing checkout reference" };
 
-  const resultCode = payHero
-    ? (payHero.ResultCode ?? (payHero.Status === "Success" ? 0 : 1))
-    : (callback?.ResultCode ?? 1);
+  const providerReference = payHero?.CheckoutRequestID ?? callback?.CheckoutRequestID;
+  if (!providerReference) return { ok: false, message: "Missing provider reference" };
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id, user_id, plan_id, status, phone_number, mac_address, ip_address, device_label")
+    .select("id, user_id, plan_id, status, amount_kes, transaction_reference, phone_number, mac_address, ip_address, device_label")
     .eq("transaction_reference", reference)
     .maybeSingle();
 
   if (!tx) return { ok: false, message: "Unknown transaction reference" };
+  if (tx.status !== "pending") return { ok: true, message: "Already processed" };
 
-  if (resultCode !== 0) {
+  // Never trust the callback body: confirm the payment with PayHero directly.
+  const { verifyPayment } = await import("./payhero.server");
+  const verified = await verifyPayment(providerReference);
+  if (verified.externalReference && verified.externalReference !== tx.transaction_reference) {
+    return { ok: false, message: "Reference mismatch" };
+  }
+
+  if (verified.status === "failed") {
     await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id);
     return { ok: true, message: "Payment failed and recorded" };
+  }
+  if (verified.status !== "success") {
+    return { ok: false, message: "Payment not confirmed" };
+  }
+  if (verified.amount != null && verified.amount < Number(tx.amount_kes)) {
+    return { ok: false, message: "Amount mismatch" };
   }
 
   if (tx.status === "completed") {
