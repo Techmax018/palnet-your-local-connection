@@ -15,6 +15,13 @@
       "when": 1789707308216,
       "tag": "0001_realtime_and_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790853445975,
+      "tag": "0002_lock_down_router_tables",
+      "breakpoints": true
     }
   ]
 }
