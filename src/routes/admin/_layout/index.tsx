@@ -43,7 +43,7 @@ type SessionRow = {
 type TxRow = {
   id: string; created_at: string; phone_number: string | null;
   amount_kes: number; payment_method: string;
-  transaction_reference: string | null; status: string;
+  transaction_reference: string | null; mpesa_receipt_number: string | null; status: string;
   internet_plans: { name: string } | null;
 };
 
@@ -186,10 +186,10 @@ function useTransactions(search: string) {
     queryFn: async () => {
       let q = supabase
         .from("transactions")
-        .select("id,created_at,phone_number,amount_kes,payment_method,transaction_reference,status,internet_plans(name)")
+        .select("id,created_at,phone_number,amount_kes,payment_method,transaction_reference,mpesa_receipt_number,status,internet_plans(name)")
         .order("created_at", { ascending: false })
         .limit(20);
-      if (search) q = q.or(`phone_number.ilike.%${search}%,transaction_reference.ilike.%${search}%`) as typeof q;
+      if (search) q = q.or(`phone_number.ilike.%${search}%,transaction_reference.ilike.%${search}%,mpesa_receipt_number.ilike.%${search}%`) as typeof q;
       const { data } = await q;
       return (data ?? []) as unknown as TxRow[];
     },
@@ -872,7 +872,7 @@ function AdminDashboard() {
                         </td>
                         <td className="px-3 py-2.5"><TxStatusBadge status={tx.status} /></td>
                         <td className="px-3 py-2.5 max-w-[80px] truncate font-mono text-slate-600">
-                          {tx.transaction_reference ?? "—"}
+                          {receiptLabel(tx)}
                         </td>
                       </tr>
                     ))}
@@ -1003,4 +1003,11 @@ function AdminDashboard() {
       />
     </div>
   );
+}
+
+function receiptLabel(tx: { payment_method: string; transaction_reference: string | null; mpesa_receipt_number: string | null; status: string }) {
+  if (tx.payment_method === "voucher") return tx.transaction_reference ?? "—";
+  if (tx.mpesa_receipt_number) return tx.mpesa_receipt_number;
+  if (tx.status === "pending") return "Awaiting M-Pesa";
+  return "No M-Pesa receipt";
 }

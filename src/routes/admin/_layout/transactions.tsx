@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin/_layout/transactions")({
 type Tx = {
   id: string; created_at: string; phone_number: string | null;
   amount_kes: number; payment_method: string;
-  transaction_reference: string | null; status: string;
+  transaction_reference: string | null; mpesa_receipt_number: string | null; status: string;
   internet_plans: { name: string } | null;
 };
 
@@ -31,7 +31,7 @@ function AdminTransactions() {
     queryFn: async () => {
       const { data } = await supabase
         .from("transactions")
-        .select("id, created_at, phone_number, amount_kes, payment_method, transaction_reference, status, internet_plans(name)")
+        .select("id, created_at, phone_number, amount_kes, payment_method, transaction_reference, mpesa_receipt_number, status, internet_plans(name)")
         .order("created_at", { ascending: false })
         .limit(200);
       return (data ?? []) as unknown as Tx[];
@@ -42,6 +42,7 @@ function AdminTransactions() {
     const matchSearch = !search ||
       tx.phone_number?.includes(search) ||
       tx.transaction_reference?.toLowerCase().includes(search.toLowerCase()) ||
+      tx.mpesa_receipt_number?.toLowerCase().includes(search.toLowerCase()) ||
       tx.internet_plans?.name.toLowerCase().includes(search.toLowerCase());
     return matchSearch && (statusFilter === "all" || tx.status === statusFilter);
   });
@@ -59,7 +60,7 @@ function AdminTransactions() {
     };
     const rows = filtered.map((tx) =>
       [new Date(tx.created_at).toISOString(), tx.phone_number ?? "", tx.internet_plans?.name ?? "",
-        tx.amount_kes, tx.payment_method, tx.transaction_reference ?? "", tx.status].map(cell).join(",")
+        tx.amount_kes, tx.payment_method, receiptLabel(tx), tx.status].map(cell).join(",")
     ).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -141,7 +142,7 @@ function AdminTransactions() {
                         {tx.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-600">{tx.transaction_reference ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{receiptLabel(tx)}</td>
                   </tr>
                 ))}
                 {!filtered.length && (
@@ -154,4 +155,11 @@ function AdminTransactions() {
       </div>
     </div>
   );
+}
+
+function receiptLabel(tx: { payment_method: string; transaction_reference: string | null; mpesa_receipt_number: string | null; status: string }) {
+  if (tx.payment_method === "voucher") return tx.transaction_reference ?? "—";
+  if (tx.mpesa_receipt_number) return tx.mpesa_receipt_number;
+  if (tx.status === "pending") return "Awaiting M-Pesa";
+  return "No M-Pesa receipt";
 }
