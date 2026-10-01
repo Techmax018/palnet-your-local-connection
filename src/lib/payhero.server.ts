@@ -87,3 +87,39 @@ export async function requestStkPush(input: {
     providerReference: parsed.reference ?? parsed.CheckoutRequestID,
   };
 }
+
+/**
+ * Confirms a payment directly with PayHero. Callbacks are unsigned, so the
+ * callback body is never trusted on its own.
+ */
+export async function verifyPayment(providerReference: string): Promise<{
+  status: "success" | "failed" | "pending" | "unknown";
+  amount: number | null;
+  externalReference: string | null;
+}> {
+  const auth = basicAuth();
+  if (!auth) return { status: "unknown", amount: null, externalReference: null };
+  try {
+    const res = await fetch(
+      `${PAYHERO_BASE}/transaction-status?reference=${encodeURIComponent(providerReference)}`,
+      { headers: { Authorization: auth } },
+    );
+    if (!res.ok) return { status: "unknown", amount: null, externalReference: null };
+    const body = (await res.json()) as {
+      status?: string;
+      amount?: number | string;
+      external_reference?: string;
+      ExternalReference?: string;
+    };
+    const s = String(body.status ?? "").toUpperCase();
+    const status = s === "SUCCESS" ? "success" : s === "FAILED" ? "failed" : s === "QUEUED" || s === "PENDING" ? "pending" : "unknown";
+    return {
+      status,
+      amount: body.amount != null ? Number(body.amount) : null,
+      externalReference: body.external_reference ?? body.ExternalReference ?? null,
+    };
+  } catch (error) {
+    console.error("[payhero] status check failed", error);
+    return { status: "unknown", amount: null, externalReference: null };
+  }
+}

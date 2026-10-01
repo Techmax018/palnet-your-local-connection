@@ -40,7 +40,7 @@ export const startGuestPayment = createServerFn({ method: "POST" })
       return { ok: false as const, message: "This package is not available right now" };
     }
 
-    const reference = `PN${Date.now().toString(36).toUpperCase()}`;
+    const reference = `PN${crypto.randomUUID().replace(/-/g, "").slice(0, 20).toUpperCase()}`;
 
     const { error: txError } = await supabaseAdmin.from("transactions").insert({
       plan_id: plan.id,
@@ -209,10 +209,12 @@ export const lookupGuestSession = createServerFn({ method: "POST" })
 
 /** Ends a guest session for the device that owns it. */
 export const disconnectGuestSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z.object({ subscriptionId: z.string().uuid(), macAddress: z.string().max(32) }).parse(data),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: sub } = await supabaseAdmin
       .from("user_subscriptions")
@@ -352,8 +354,9 @@ export const generateVouchers = createServerFn({ method: "POST" })
     const codes = new Set<string>();
     while (codes.size < data.quantity) {
       let code = "";
+      const bytes = crypto.getRandomValues(new Uint8Array(6));
       for (let i = 0; i < 6; i += 1) {
-        code += alphabet[Math.floor(Math.random() * alphabet.length)];
+        code += alphabet[bytes[i]! % alphabet.length];
       }
       codes.add(code);
     }
@@ -398,7 +401,7 @@ export const payWithMpesa = createServerFn({ method: "POST" })
       return { ok: false as const, message: "This package is not available right now" };
     }
 
-    const reference = `PN${Date.now().toString(36).toUpperCase()}`;
+    const reference = `PN${crypto.randomUUID().replace(/-/g, "").slice(0, 20).toUpperCase()}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: txError } = await supabaseAdmin.from("transactions").insert({
@@ -487,22 +490,6 @@ export const disconnectMySession = createServerFn({ method: "POST" })
     const { terminateSubscription } = await import("./palnet.server");
     await terminateSubscription(sub.id as string);
     return { ok: true as const, message: "You have been disconnected" };
-  });
-
-/** Admin: claim the admin role — allowed only while no admin exists yet. */
-export const claimFirstAdmin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count } = await supabaseAdmin
-      .from("user_roles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin");
-    if ((count ?? 0) > 0) return { ok: false as const, message: "An admin already exists" };
-
-    await supabaseAdmin.from("user_roles").insert({ user_id: context.userId, role: "admin" });
-    await supabaseAdmin.from("profiles").update({ role: "admin" }).eq("id", context.userId);
-    return { ok: true as const, message: "You are now the PalNet administrator" };
   });
 
 /* ─── Installation request (guest, no auth required) ─── */
@@ -740,10 +727,12 @@ export const checkDeviceLock = createServerFn({ method: "POST" })
 /* ─── Tethering flag (called by portal or background worker) ─── */
 
 export const flagSuspiciousTethering = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z.object({ subscriptionId: z.string().uuid() }).parse(data),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin
       .from("user_subscriptions")
