@@ -96,6 +96,7 @@ export async function verifyPayment(providerReference: string): Promise<{
   status: "success" | "failed" | "pending" | "unknown";
   amount: number | null;
   externalReference: string | null;
+  receipt?: string | null;
 }> {
   const auth = basicAuth();
   if (!auth) return { status: "unknown", amount: null, externalReference: null };
@@ -110,6 +111,8 @@ export async function verifyPayment(providerReference: string): Promise<{
       amount?: number | string;
       external_reference?: string;
       ExternalReference?: string;
+      provider_reference?: string;
+      MpesaReceiptNumber?: string;
     };
     const s = String(body.status ?? "").toUpperCase();
     const status = s === "SUCCESS" ? "success" : s === "FAILED" ? "failed" : s === "QUEUED" || s === "PENDING" ? "pending" : "unknown";
@@ -117,6 +120,7 @@ export async function verifyPayment(providerReference: string): Promise<{
       status,
       amount: body.amount != null ? Number(body.amount) : null,
       externalReference: body.external_reference ?? body.ExternalReference ?? null,
+      receipt: body.MpesaReceiptNumber ?? body.provider_reference ?? null,
     };
   } catch (error) {
     console.error("[payhero] status check failed", error);

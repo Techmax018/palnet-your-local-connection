@@ -168,7 +168,7 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
     .from("transactions")
     .update({
       status: "completed",
-      mpesa_receipt_number: payHero?.MpesaReceiptNumber ?? receiptFromDaraja(callback) ?? null,
+      mpesa_receipt_number: payHero?.MpesaReceiptNumber ?? receiptFromDaraja(callback) ?? verified.receipt ?? null,
       phone_number: (payHero?.Phone ? String(payHero.Phone) : null) ?? tx.phone_number,
       amount_kes: verified.amount ?? tx.amount_kes,
     })
