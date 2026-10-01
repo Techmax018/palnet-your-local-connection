@@ -140,26 +140,32 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          heartbeat_key: string | null
           id: string
           is_used: boolean | null
           site_identity: string
           token: string
+          used_at: string | null
         }
         Insert: {
           created_at?: string | null
           expires_at: string
+          heartbeat_key?: string | null
           id?: string
           is_used?: boolean | null
           site_identity: string
           token: string
+          used_at?: string | null
         }
         Update: {
           created_at?: string | null
           expires_at?: string
+          heartbeat_key?: string | null
           id?: string
           is_used?: boolean | null
           site_identity?: string
           token?: string
+          used_at?: string | null
         }
         Relationships: []
       }
@@ -204,33 +210,48 @@ export type Database = {
       routers: {
         Row: {
           api_port: number
+          cpu_load: number | null
           created_at: string
+          free_memory: number | null
           id: string
           ip_address: string
           last_ping: string | null
+          last_seen: string | null
           location: string | null
           name: string
+          site_identity: string | null
           status: string
+          uptime: string | null
         }
         Insert: {
           api_port?: number
+          cpu_load?: number | null
           created_at?: string
+          free_memory?: number | null
           id?: string
           ip_address: string
           last_ping?: string | null
+          last_seen?: string | null
           location?: string | null
           name: string
+          site_identity?: string | null
           status?: string
+          uptime?: string | null
         }
         Update: {
           api_port?: number
+          cpu_load?: number | null
           created_at?: string
+          free_memory?: number | null
           id?: string
           ip_address?: string
           last_ping?: string | null
+          last_seen?: string | null
           location?: string | null
           name?: string
+          site_identity?: string | null
           status?: string
+          uptime?: string | null
         }
         Relationships: []
       }
@@ -284,6 +305,7 @@ export type Database = {
           id: string
           ip_address: string | null
           mac_address: string | null
+          mpesa_receipt_number: string | null
           payment_method: string
           phone_number: string | null
           plan_id: string | null
@@ -298,6 +320,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           mac_address?: string | null
+          mpesa_receipt_number?: string | null
           payment_method: string
           phone_number?: string | null
           plan_id?: string | null
@@ -312,6 +335,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           mac_address?: string | null
+          mpesa_receipt_number?: string | null
           payment_method?: string
           phone_number?: string | null
           plan_id?: string | null

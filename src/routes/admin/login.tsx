@@ -150,7 +150,7 @@ function AdminLogin() {
             <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5">
               <ShieldOff className="size-3.5 shrink-0 mt-0.5 text-red-400" />
               <p className="text-xs text-red-400">
-                Access denied. Check your credentials or contact the system owner to grant admin access in Supabase.
+                Access denied. Check your credentials or contact the system owner.
               </p>
             </div>
           )}
@@ -170,11 +170,7 @@ function AdminLogin() {
         </div>
 
         <p className="text-center text-xs text-slate-600">
-          PalNet ISP Management · Restricted Access
-          <br />
-          <span className="text-slate-700">
-            
-          </span>
+          PalNet ISP Management System • Authorized Access Only
         </p>
       </div>
     </div>

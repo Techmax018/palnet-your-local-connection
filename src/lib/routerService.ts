@@ -166,7 +166,12 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
   // Atomic claim so a replayed callback can't activate twice.
   const { data: claimed } = await supabaseAdmin
     .from("transactions")
-    .update({ status: "completed" })
+    .update({
+      status: "completed",
+      mpesa_receipt_number: payHero?.MpesaReceiptNumber ?? receiptFromDaraja(callback) ?? null,
+      phone_number: (payHero?.Phone ? String(payHero.Phone) : null) ?? tx.phone_number,
+      amount_kes: verified.amount ?? tx.amount_kes,
+    })
     .eq("id", tx.id)
     .eq("status", "pending")
     .select("id");
@@ -277,4 +282,11 @@ export async function removeAntiTetheringRules(
   return routerRequest(target, "/ip/firewall/mangle/remove", {
     "?comment": "Block PalNet Tethering",
   });
+}
+
+function receiptFromDaraja(cb: unknown): string | null {
+  const items = (cb as { CallbackMetadata?: { Item?: { Name: string; Value?: unknown }[] } } | undefined)
+    ?.CallbackMetadata?.Item;
+  const hit = items?.find((i) => i.Name === "MpesaReceiptNumber");
+  return hit?.Value ? String(hit.Value) : null;
 }
