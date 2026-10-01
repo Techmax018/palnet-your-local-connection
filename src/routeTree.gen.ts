@@ -23,6 +23,8 @@ import { Route as AdminLayoutSettingsRouteImport } from './routes/admin/_layout/
 import { Route as AdminLayoutTransactionsRouteImport } from './routes/admin/_layout/transactions'
 import { Route as AdminLayoutVouchersRouteImport } from './routes/admin/_layout/vouchers'
 import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
+import { Route as ApiPublicProvisionBootstrapRouteImport } from './routes/api/public/provision/bootstrap'
+import { Route as ApiPublicProvisionHeartbeatRouteImport } from './routes/api/public/provision/heartbeat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,6 +97,18 @@ const ApiPublicMpesaCallbackRoute = ApiPublicMpesaCallbackRouteImport.update({
   path: '/api/public/mpesa/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicProvisionBootstrapRoute =
+  ApiPublicProvisionBootstrapRouteImport.update({
+    id: '/api/public/provision/bootstrap',
+    path: '/api/public/provision/bootstrap',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicProvisionHeartbeatRoute =
+  ApiPublicProvisionHeartbeatRouteImport.update({
+    id: '/api/public/provision/heartbeat',
+    path: '/api/public/provision/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -111,6 +125,8 @@ export interface FileRoutesByFullPath {
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
   '/admin/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
+  '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
+  '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +142,8 @@ export interface FileRoutesByTo {
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
   '/admin': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
+  '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
+  '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +161,8 @@ export interface FileRoutesById {
   '/admin/_layout/vouchers': typeof AdminLayoutVouchersRoute
   '/admin/_layout/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
+  '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
+  '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +181,8 @@ export interface FileRouteTypes {
     | '/admin/vouchers'
     | '/admin/'
     | '/api/public/mpesa/callback'
+    | '/api/public/provision/bootstrap'
+    | '/api/public/provision/heartbeat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -176,6 +198,8 @@ export interface FileRouteTypes {
     | '/admin/vouchers'
     | '/admin'
     | '/api/public/mpesa/callback'
+    | '/api/public/provision/bootstrap'
+    | '/api/public/provision/heartbeat'
   id:
     | '__root__'
     | '/'
@@ -192,6 +216,8 @@ export interface FileRouteTypes {
     | '/admin/_layout/vouchers'
     | '/admin/_layout/'
     | '/api/public/mpesa/callback'
+    | '/api/public/provision/bootstrap'
+    | '/api/public/provision/heartbeat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -201,6 +227,8 @@ export interface RootRouteChildren {
   AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
   ApiPublicMpesaCallbackRoute: typeof ApiPublicMpesaCallbackRoute
+  ApiPublicProvisionBootstrapRoute: typeof ApiPublicProvisionBootstrapRoute
+  ApiPublicProvisionHeartbeatRoute: typeof ApiPublicProvisionHeartbeatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -303,6 +331,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMpesaCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/provision/bootstrap': {
+      id: '/api/public/provision/bootstrap'
+      path: '/api/public/provision/bootstrap'
+      fullPath: '/api/public/provision/bootstrap'
+      preLoaderRoute: typeof ApiPublicProvisionBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/provision/heartbeat': {
+      id: '/api/public/provision/heartbeat'
+      path: '/api/public/provision/heartbeat'
+      fullPath: '/api/public/provision/heartbeat'
+      preLoaderRoute: typeof ApiPublicProvisionHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -339,6 +381,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLayoutRoute: AdminLayoutRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
   ApiPublicMpesaCallbackRoute: ApiPublicMpesaCallbackRoute,
+  ApiPublicProvisionBootstrapRoute: ApiPublicProvisionBootstrapRoute,
+  ApiPublicProvisionHeartbeatRoute: ApiPublicProvisionHeartbeatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
