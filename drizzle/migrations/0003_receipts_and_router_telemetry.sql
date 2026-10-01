@@ -1,0 +1,10 @@
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS mpesa_receipt_number text;
+CREATE UNIQUE INDEX IF NOT EXISTS transactions_mpesa_receipt_uidx ON public.transactions (mpesa_receipt_number) WHERE mpesa_receipt_number IS NOT NULL;
+ALTER TABLE public.routers ADD COLUMN IF NOT EXISTS cpu_load integer;
+ALTER TABLE public.routers ADD COLUMN IF NOT EXISTS free_memory bigint;
+ALTER TABLE public.routers ADD COLUMN IF NOT EXISTS uptime text;
+ALTER TABLE public.routers ADD COLUMN IF NOT EXISTS last_seen timestamptz;
+ALTER TABLE public.routers ADD COLUMN IF NOT EXISTS site_identity text;
+ALTER TABLE public.provision_tokens ADD COLUMN IF NOT EXISTS used_at timestamptz;
+ALTER TABLE public.provision_tokens ADD COLUMN IF NOT EXISTS heartbeat_key text;
+CREATE UNIQUE INDEX IF NOT EXISTS provision_tokens_heartbeat_key_uidx ON public.provision_tokens (heartbeat_key) WHERE heartbeat_key IS NOT NULL;
