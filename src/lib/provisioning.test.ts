@@ -4,6 +4,7 @@ import {
   validateProvisionToken,
   parseDeviceRegistration,
   buildBootstrapScript,
+  resolveProvisionApiBaseUrl,
 } from './provisioning';
 
 describe('zero-touch provisioning', () => {
@@ -43,12 +44,18 @@ describe('zero-touch provisioning', () => {
       token: 'prov_1234567890abcdef',
       heartbeatKey: 'heartbeat-key-123456',
       configVersion: 'v1',
-      apiBaseUrl: 'https://palnet-wifi.lovable.app',
+      apiBaseUrl: 'https://example.com',
     });
 
     expect(script).toContain('/system identity set name="Nairobi-01"');
     expect(script).toContain('config_version=v1');
     expect(script).toContain('PalNetHeartbeat');
     expect(script).toContain('heartbeat-key-123456');
+    expect(script).toContain('https://example.com/api/public/provision/register');
+  });
+
+  it('prefers the runtime or environment base URL over the hardcoded default', () => {
+    expect(resolveProvisionApiBaseUrl('https://example.com')).toBe('https://example.com');
+    expect(resolveProvisionApiBaseUrl()).toBe('https://palnet-wifi.lovable.app');
   });
 });

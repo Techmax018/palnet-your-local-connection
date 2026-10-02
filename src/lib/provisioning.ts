@@ -17,6 +17,17 @@ export type BootstrapScriptOptions = {
   apiBaseUrl?: string;
 };
 
+export function resolveProvisionApiBaseUrl(input?: string): string {
+  const override = (input ?? process.env["APP_URL"] ?? process.env["PUBLIC_APP_URL"] ?? process.env["SITE_URL"] ?? "").trim();
+  if (override) {
+    return override.replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return "https://palnet-wifi.lovable.app";
+}
+
 function normalizeSiteIdentity(value: string): string {
   return value
     .trim()
@@ -134,11 +145,12 @@ export function buildBootstrapScript({
   token,
   heartbeatKey,
   configVersion = "v1",
-  apiBaseUrl = "https://palnet-wifi.lovable.app",
+  apiBaseUrl,
 }: BootstrapScriptOptions): string {
+  const baseUrl = resolveProvisionApiBaseUrl(apiBaseUrl);
   const site = rosEscape(normalizeSiteIdentity(siteIdentity));
-  const registerUrl = `${apiBaseUrl}/api/public/provision/register`;
-  const heartbeatUrl = `${apiBaseUrl}/api/public/provision/heartbeat`;
+  const registerUrl = `${baseUrl}/api/public/provision/register`;
+  const heartbeatUrl = `${baseUrl}/api/public/provision/heartbeat`;
   return `# PalNet bootstrap (RouterOS 7.x)
 # config_version=${configVersion}
 :global palnet_site "${site}"

@@ -48,6 +48,8 @@ function AdminRouters() {
     },
   });
 
+  const provisionBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://palnet-wifi.lovable.app";
+
   async function createRouterProvisionToken(siteIdentity: string) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const token = createProvisionToken(siteIdentity);
@@ -244,7 +246,7 @@ function AdminRouters() {
             </div>
             <div className="space-y-1.5">
               <Label className="admin-label">Provision Command</Label>
-              <div className="font-mono text-xs bg-slate-900 p-2 rounded">{provisionToken ? `/tool fetch url="https://palnet-wifi.lovable.app/api/public/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc` : "Click 'Create Token' to generate command"}</div>
+              <div className="font-mono text-xs bg-slate-900 p-2 rounded">{provisionToken ? `/tool fetch url="${provisionBaseUrl}/api/public/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc` : "Click 'Create Token' to generate command"}</div>
             </div>
             <div className="flex gap-2">
               <Button className="admin-btn-primary flex-1" onClick={async () => {
@@ -255,7 +257,7 @@ function AdminRouters() {
               }}>Create Token</Button>
               <Button className="admin-btn-outline" onClick={async () => {
                 if (!provisionToken) return;
-                const cmd = `/tool fetch url="https://palnet-wifi.lovable.app/api/public/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc`;
+                const cmd = `/tool fetch url="${provisionBaseUrl}/api/public/provision/bootstrap?token=${provisionToken}" mode=https dst-path="bootstrap.rsc"; /import bootstrap.rsc; /file remove bootstrap.rsc`;
                 try { await navigator.clipboard.writeText(cmd); toast.success('Copied to clipboard'); } catch { toast.error('Copy failed'); }
               }}><Copy className="size-4" /> Copy Command</Button>
             </div>

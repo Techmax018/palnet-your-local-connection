@@ -9,6 +9,7 @@ export const Route = createFileRoute("/api/public/provision/bootstrap")({
     handlers: {
       GET: async ({ request }) => {
         const token = new URL(request.url).searchParams.get("token") ?? "";
+        const requestOrigin = new URL(request.url).origin;
         if (!/^prov_[a-z0-9_-]{8,96}$/i.test(token)) {
           return new Response("Invalid token", { status: 400 });
         }
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/api/public/provision/bootstrap")({
           token: row.token,
           heartbeatKey,
           configVersion: "v1",
-          apiBaseUrl: `https://${APP_HOST}`,
+          apiBaseUrl: requestOrigin,
         });
 
         return new Response(script, {
