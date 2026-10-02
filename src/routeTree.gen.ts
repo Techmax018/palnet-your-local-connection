@@ -22,6 +22,7 @@ import { Route as AdminLayoutSessionsRouteImport } from './routes/admin/_layout/
 import { Route as AdminLayoutSettingsRouteImport } from './routes/admin/_layout/settings'
 import { Route as AdminLayoutTransactionsRouteImport } from './routes/admin/_layout/transactions'
 import { Route as AdminLayoutVouchersRouteImport } from './routes/admin/_layout/vouchers'
+import { Route as ApiPaymentsCallbackRouteImport } from './routes/api/payments/callback'
 import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
 import { Route as ApiPublicProvisionBootstrapRouteImport } from './routes/api/public/provision/bootstrap'
 import { Route as ApiPublicProvisionHeartbeatRouteImport } from './routes/api/public/provision/heartbeat'
@@ -92,6 +93,11 @@ const AdminLayoutVouchersRoute = AdminLayoutVouchersRouteImport.update({
   path: '/vouchers',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
+const ApiPaymentsCallbackRoute = ApiPaymentsCallbackRouteImport.update({
+  id: '/api/payments/callback',
+  path: '/api/payments/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMpesaCallbackRoute = ApiPublicMpesaCallbackRouteImport.update({
   id: '/api/public/mpesa/callback',
   path: '/api/public/mpesa/callback',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminLayoutSettingsRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
+  '/api/payments/callback': typeof ApiPaymentsCallbackRoute
   '/admin/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminLayoutSettingsRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
+  '/api/payments/callback': typeof ApiPaymentsCallbackRoute
   '/admin': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/admin/_layout/settings': typeof AdminLayoutSettingsRoute
   '/admin/_layout/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/_layout/vouchers': typeof AdminLayoutVouchersRoute
+  '/api/payments/callback': typeof ApiPaymentsCallbackRoute
   '/admin/_layout/': typeof AdminLayoutIndexRoute
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/vouchers'
+    | '/api/payments/callback'
     | '/admin/'
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/vouchers'
+    | '/api/payments/callback'
     | '/admin'
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/settings'
     | '/admin/_layout/transactions'
     | '/admin/_layout/vouchers'
+    | '/api/payments/callback'
     | '/admin/_layout/'
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   ReconnectRoute: typeof ReconnectRoute
   AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiPaymentsCallbackRoute: typeof ApiPaymentsCallbackRoute
   ApiPublicMpesaCallbackRoute: typeof ApiPublicMpesaCallbackRoute
   ApiPublicProvisionBootstrapRoute: typeof ApiPublicProvisionBootstrapRoute
   ApiPublicProvisionHeartbeatRoute: typeof ApiPublicProvisionHeartbeatRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutVouchersRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/api/payments/callback': {
+      id: '/api/payments/callback'
+      path: '/api/payments/callback'
+      fullPath: '/api/payments/callback'
+      preLoaderRoute: typeof ApiPaymentsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/mpesa/callback': {
       id: '/api/public/mpesa/callback'
       path: '/api/public/mpesa/callback'
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReconnectRoute: ReconnectRoute,
   AdminLayoutRoute: AdminLayoutRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
+  ApiPaymentsCallbackRoute: ApiPaymentsCallbackRoute,
   ApiPublicMpesaCallbackRoute: ApiPublicMpesaCallbackRoute,
   ApiPublicProvisionBootstrapRoute: ApiPublicProvisionBootstrapRoute,
   ApiPublicProvisionHeartbeatRoute: ApiPublicProvisionHeartbeatRoute,
