@@ -29,6 +29,27 @@
       "when": 1790853598280,
       "tag": "0003_receipts_and_router_telemetry",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790940143489,
+      "tag": "0004_routers_admin_read_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790940546805,
+      "tag": "0005_transactions_provider_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790940797859,
+      "tag": "0006_backfill_payhero_receipts",
+      "breakpoints": true
     }
   ]
 }
