@@ -105,8 +105,12 @@ export async function verifyPayment(providerReference: string): Promise<{
       `${PAYHERO_BASE}/transaction-status?reference=${encodeURIComponent(providerReference)}`,
       { headers: { Authorization: auth } },
     );
-    if (!res.ok) return { status: "unknown", amount: null, externalReference: null };
-    const body = (await res.json()) as {
+    const text = await res.text();
+    if (!res.ok) {
+      console.warn(`[payhero] status ${res.status} for ${providerReference}: ${text.slice(0, 200)}`);
+      return { status: "unknown", amount: null, externalReference: null };
+    }
+    const body = JSON.parse(text) as {
       status?: string;
       amount?: number | string;
       external_reference?: string;
@@ -115,7 +119,7 @@ export async function verifyPayment(providerReference: string): Promise<{
       MpesaReceiptNumber?: string;
     };
     const s = String(body.status ?? "").toUpperCase();
-    const status = s === "SUCCESS" ? "success" : s === "FAILED" ? "failed" : s === "QUEUED" || s === "PENDING" ? "pending" : "unknown";
+    const status = s === "SUCCESS" || s === "COMPLETED" ? "success" : s === "FAILED" || s === "CANCELLED" ? "failed" : s === "QUEUED" || s === "PENDING" ? "pending" : "unknown";
     return {
       status,
       amount: body.amount != null ? Number(body.amount) : null,

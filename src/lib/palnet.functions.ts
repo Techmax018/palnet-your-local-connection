@@ -56,12 +56,15 @@ export const startGuestPayment = createServerFn({ method: "POST" })
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
     const { requestStkPush } = await import("./payhero.server");
-    await requestStkPush({
+    const push = await requestStkPush({
       phone,
       amount: Number(plan.price_kes),
       reference,
       description: plan.name,
     });
+    if (push.providerReference) {
+      await supabaseAdmin.from("transactions").update({ provider_reference: push.providerReference }).eq("transaction_reference", reference);
+    }
 
     return {
       ok: true as const,
@@ -416,12 +419,15 @@ export const payWithMpesa = createServerFn({ method: "POST" })
     if (txError) return { ok: false as const, message: "Could not start payment. Try again." };
 
     const { requestStkPush } = await import("./payhero.server");
-    await requestStkPush({
+    const push = await requestStkPush({
       phone,
       amount: Number(plan.price_kes),
       reference,
       description: plan.name,
     });
+    if (push.providerReference) {
+      await supabaseAdmin.from("transactions").update({ provider_reference: push.providerReference }).eq("transaction_reference", reference);
+    }
 
     return {
       ok: true as const,
@@ -833,6 +839,13 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
 
     if (!tx) {
       return { status: "expired", subscriptionEndTime: null, planName: null, message: "Transaction not found." };
+    }
+
+    if (tx.status === "pending") {
+      const { settleTransaction } = await import("./routerService");
+      await settleTransaction({ reference: data.reference }).catch(() => null);
+      const { data: fresh } = await supabaseAdmin.from("transactions").select("status").eq("id", tx.id).maybeSingle();
+      if (fresh?.status) tx.status = fresh.status;
     }
 
     // Expire pending transactions older than 5 minutes

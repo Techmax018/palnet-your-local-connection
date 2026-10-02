@@ -123,53 +123,65 @@ export type MpesaCallbackPayload = {
 export async function processMpesaCallback(payload: MpesaCallbackPayload) {
   const payHero = payload.response;
   const callback = payload.Body?.stkCallback;
+  const reference = payHero?.ExternalReference ?? null;
+  const providerReference = payHero?.CheckoutRequestID ?? callback?.CheckoutRequestID ?? null;
+  if (!reference && !providerReference) return { ok: false, message: "Missing checkout reference" };
+  return settleTransaction({
+    reference,
+    providerReference,
+    receiptHint: payHero?.MpesaReceiptNumber ?? receiptFromDaraja(callback) ?? null,
+    phoneHint: payHero?.Phone ? String(payHero.Phone) : null,
+  });
+}
 
-  const reference =
-    payHero?.ExternalReference ??
-    payHero?.CheckoutRequestID ??
-    callback?.CheckoutRequestID ??
-    callback?.MerchantRequestID;
-  if (!reference) return { ok: false, message: "Missing checkout reference" };
-
-  const providerReference = payHero?.CheckoutRequestID ?? callback?.CheckoutRequestID;
-  if (!providerReference) return { ok: false, message: "Missing provider reference" };
-
+/**
+ * Confirms a pending transaction with PayHero (never trusting caller data for
+ * the outcome) and activates the session. Called by the callback and by the
+ * customer's status poll, so a slow/missing callback no longer blocks access.
+ */
+export async function settleTransaction(input: {
+  reference: string | null;
+  providerReference?: string | null;
+  receiptHint?: string | null;
+  phoneHint?: string | null;
+}) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const { data: tx } = await supabaseAdmin
-    .from("transactions")
-    .select("id, user_id, plan_id, status, amount_kes, transaction_reference, phone_number, mac_address, ip_address, device_label")
-    .eq("transaction_reference", reference)
-    .maybeSingle();
-
+  const cols = "id, user_id, plan_id, status, amount_kes, transaction_reference, provider_reference, phone_number, mac_address, ip_address, device_label";
+  let tx = null as any;
+  if (input.reference) {
+    tx = (await supabaseAdmin.from("transactions").select(cols).eq("transaction_reference", input.reference).maybeSingle()).data;
+  }
+  if (!tx && input.providerReference) {
+    tx = (await supabaseAdmin.from("transactions").select(cols).eq("provider_reference", input.providerReference).maybeSingle()).data;
+  }
   if (!tx) return { ok: false, message: "Unknown transaction reference" };
   if (tx.status !== "pending") return { ok: true, message: "Already processed" };
 
-  // Never trust the callback body: confirm the payment with PayHero directly.
   const { verifyPayment } = await import("./payhero.server");
-  const verified = await verifyPayment(providerReference);
+  const candidates = [...new Set([tx.provider_reference, input.providerReference, tx.transaction_reference].filter(Boolean))] as string[];
+  let verified: Awaited<ReturnType<typeof verifyPayment>> = { status: "unknown", amount: null, externalReference: null };
+  for (const ref of candidates) {
+    verified = await verifyPayment(ref);
+    if (verified.status !== "unknown") break;
+  }
   if (verified.externalReference && verified.externalReference !== tx.transaction_reference) {
     return { ok: false, message: "Reference mismatch" };
   }
-
   if (verified.status === "failed") {
-    await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id);
+    await supabaseAdmin.from("transactions").update({ status: "failed" }).eq("id", tx.id).eq("status", "pending");
     return { ok: true, message: "Payment failed and recorded" };
   }
-  if (verified.status !== "success") {
-    return { ok: false, message: "Payment not confirmed" };
-  }
+  if (verified.status !== "success") return { ok: false, message: "Payment not confirmed" };
   if (verified.amount != null && verified.amount < Number(tx.amount_kes)) {
     return { ok: false, message: "Amount mismatch" };
   }
 
-  // Atomic claim so a replayed callback can't activate twice.
   const { data: claimed } = await supabaseAdmin
     .from("transactions")
     .update({
       status: "completed",
-      mpesa_receipt_number: payHero?.MpesaReceiptNumber ?? receiptFromDaraja(callback) ?? verified.receipt ?? null,
-      phone_number: (payHero?.Phone ? String(payHero.Phone) : null) ?? tx.phone_number,
+      mpesa_receipt_number: verified.receipt ?? input.receiptHint ?? null,
+      phone_number: input.phoneHint ?? tx.phone_number,
       amount_kes: verified.amount ?? tx.amount_kes,
     })
     .eq("id", tx.id)
@@ -179,14 +191,13 @@ export async function processMpesaCallback(payload: MpesaCallbackPayload) {
 
   const { activateSubscription } = await import("./palnet.server");
   const result = await activateSubscription({
-    userId: (tx.user_id as string | null) ?? null,
+    userId: tx.user_id ?? null,
     planId: tx.plan_id as string,
-    phone: (tx.phone_number as string | null) ?? null,
-    macAddress: (tx.mac_address as string | null) ?? null,
-    ipAddress: (tx.ip_address as string | null) ?? null,
-    deviceLabel: (tx.device_label as string | null) ?? null,
+    phone: tx.phone_number ?? null,
+    macAddress: tx.mac_address ?? null,
+    ipAddress: tx.ip_address ?? null,
+    deviceLabel: tx.device_label ?? null,
   });
-
   return { ok: true, message: "Subscription activated", subscriptionId: result.subscriptionId };
 }
 
