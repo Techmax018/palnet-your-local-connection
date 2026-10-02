@@ -43,6 +43,13 @@
       "when": 1790940546805,
       "tag": "0005_transactions_provider_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790940797859,
+      "tag": "0006_backfill_payhero_receipts",
+      "breakpoints": true
     }
   ]
 }
