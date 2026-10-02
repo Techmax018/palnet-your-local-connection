@@ -29,6 +29,13 @@
       "when": 1790853598280,
       "tag": "0003_receipts_and_router_telemetry",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790940143489,
+      "tag": "0004_routers_admin_read_only",
+      "breakpoints": true
     }
   ]
 }
