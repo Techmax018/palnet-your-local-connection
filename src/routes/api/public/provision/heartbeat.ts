@@ -3,6 +3,12 @@ import { z } from "zod";
 
 const schema = z.object({
   site: z.string().max(64).optional(),
+  device_id: z.string().max(128).optional(),
+  serial_number: z.string().max(128).optional(),
+  model: z.string().max(128).optional(),
+  mac_address: z.string().max(32).optional(),
+  routeros_version: z.string().max(32).optional(),
+  board_name: z.string().max(128).optional(),
   cpu_load: z.coerce.number().int().min(0).max(100),
   free_memory: z.coerce.number().int().min(0),
   uptime: z.string().max(40),
@@ -14,18 +20,19 @@ export const Route = createFileRoute("/api/public/provision/heartbeat")({
       POST: async ({ request }) => {
         const key = request.headers.get("x-palnet-key") ?? "";
         if (key.length < 32) return new Response("Unauthorized", { status: 401 });
+
         const parsed = schema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return new Response("Invalid payload", { status: 400 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: tok } = await supabaseAdmin
           .from("provision_tokens")
-          .select("site_identity")
+          .select("site_identity, heartbeat_key")
           .eq("heartbeat_key", key)
           .maybeSingle();
         if (!tok) return new Response("Unauthorized", { status: 401 });
 
-        const site = tok.site_identity; // identity comes from the key, never the body
+        const site = tok.site_identity || parsed.data.site || "PalNet-Site";
         const now = new Date().toISOString();
         const telemetry = {
           status: "online",
@@ -35,27 +42,37 @@ export const Route = createFileRoute("/api/public/provision/heartbeat")({
           last_seen: now,
           last_ping: now,
         };
+
         const { data: existing } = await supabaseAdmin
-          .from("routers").select("id").eq("site_identity", site).maybeSingle();
+          .from("routers")
+          .select("id")
+          .eq("site_identity", site)
+          .maybeSingle();
+
         let routerId = existing?.id as string | undefined;
         if (routerId) {
-          await supabaseAdmin.from("routers").update(telemetry).eq("id", routerId);
+          await supabaseAdmin.from("routers").update({ ...telemetry, name: site, ip_address: request.headers.get("cf-connecting-ip") ?? "0.0.0.0" }).eq("id", routerId);
         } else {
           const ip = request.headers.get("cf-connecting-ip") ?? "0.0.0.0";
           const { data: created } = await supabaseAdmin
             .from("routers")
-            .insert({ name: site, site_identity: site, ip_address: ip, ...telemetry })
-            .select("id").single();
+            .insert({ name: site, site_identity: site, ip_address: ip, api_port: 8728, ...telemetry })
+            .select("id")
+            .single();
           routerId = created?.id as string | undefined;
         }
+
         if (routerId) {
           await supabaseAdmin.from("router_heartbeats").insert({
-            router_id: routerId, cpu: parsed.data.cpu_load,
+            router_id: routerId,
+            cpu: parsed.data.cpu_load,
             memory: Math.min(parsed.data.free_memory, 2147483647),
-            uptime: parsed.data.uptime, status: "online",
+            uptime: parsed.data.uptime,
+            status: "online",
           });
         }
-        return Response.json({ ok: true });
+
+        return Response.json({ ok: true, site, config_version: "v1" });
       },
     },
   },

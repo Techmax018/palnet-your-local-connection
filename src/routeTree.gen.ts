@@ -26,6 +26,7 @@ import { Route as ApiPaymentsCallbackRouteImport } from './routes/api/payments/c
 import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
 import { Route as ApiPublicProvisionBootstrapRouteImport } from './routes/api/public/provision/bootstrap'
 import { Route as ApiPublicProvisionHeartbeatRouteImport } from './routes/api/public/provision/heartbeat'
+import { Route as ApiPublicProvisionRegisterRouteImport } from './routes/api/public/provision/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -115,6 +116,12 @@ const ApiPublicProvisionHeartbeatRoute =
     path: '/api/public/provision/heartbeat',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicProvisionRegisterRoute =
+  ApiPublicProvisionRegisterRouteImport.update({
+    id: '/api/public/provision/register',
+    path: '/api/public/provision/register',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
   '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
+  '/api/public/provision/register': typeof ApiPublicProvisionRegisterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,6 +160,7 @@ export interface FileRoutesByTo {
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
   '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
+  '/api/public/provision/register': typeof ApiPublicProvisionRegisterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,6 +181,7 @@ export interface FileRoutesById {
   '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
   '/api/public/provision/bootstrap': typeof ApiPublicProvisionBootstrapRoute
   '/api/public/provision/heartbeat': typeof ApiPublicProvisionHeartbeatRoute
+  '/api/public/provision/register': typeof ApiPublicProvisionRegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
     | '/api/public/provision/heartbeat'
+    | '/api/public/provision/register'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
     | '/api/public/provision/heartbeat'
+    | '/api/public/provision/register'
   id:
     | '__root__'
     | '/'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
     | '/api/public/mpesa/callback'
     | '/api/public/provision/bootstrap'
     | '/api/public/provision/heartbeat'
+    | '/api/public/provision/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -242,6 +255,7 @@ export interface RootRouteChildren {
   ApiPublicMpesaCallbackRoute: typeof ApiPublicMpesaCallbackRoute
   ApiPublicProvisionBootstrapRoute: typeof ApiPublicProvisionBootstrapRoute
   ApiPublicProvisionHeartbeatRoute: typeof ApiPublicProvisionHeartbeatRoute
+  ApiPublicProvisionRegisterRoute: typeof ApiPublicProvisionRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -365,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProvisionHeartbeatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/provision/register': {
+      id: '/api/public/provision/register'
+      path: '/api/public/provision/register'
+      fullPath: '/api/public/provision/register'
+      preLoaderRoute: typeof ApiPublicProvisionRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -404,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMpesaCallbackRoute: ApiPublicMpesaCallbackRoute,
   ApiPublicProvisionBootstrapRoute: ApiPublicProvisionBootstrapRoute,
   ApiPublicProvisionHeartbeatRoute: ApiPublicProvisionHeartbeatRoute,
+  ApiPublicProvisionRegisterRoute: ApiPublicProvisionRegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

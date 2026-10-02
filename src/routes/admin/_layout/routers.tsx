@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { saveRouter, testRouterConnection } from "@/lib/palnet.functions";
+import { createProvisionToken } from "@/lib/provisioning";
 
 export const Route = createFileRoute("/admin/_layout/routers")({
   head: () => ({ meta: [{ title: "PalNet Admin — Routers" }] }),
@@ -47,9 +48,9 @@ function AdminRouters() {
     },
   });
 
-  async function createProvisionToken(siteIdentity: string) {
+  async function createRouterProvisionToken(siteIdentity: string) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const token = `prov_${crypto.randomUUID().replace(/-/g, "")}`;
+    const token = createProvisionToken(siteIdentity);
     const { error } = await supabase.from("provision_tokens").insert({ token, site_identity: siteIdentity, is_used: false, expires_at: expiresAt, created_at: new Date().toISOString() });
     if (error) throw error;
     return token;
@@ -248,7 +249,7 @@ function AdminRouters() {
             <div className="flex gap-2">
               <Button className="admin-btn-primary flex-1" onClick={async () => {
                 try {
-                  const token = await createProvisionToken(provisionSite || `site_${Date.now()}`);
+                  const token = await createRouterProvisionToken(provisionSite || `site_${Date.now()}`);
                   setProvisionToken(token);
                 } catch (e) { toast.error('Failed to create token'); }
               }}>Create Token</Button>
