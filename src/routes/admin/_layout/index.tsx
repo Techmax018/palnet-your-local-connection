@@ -22,7 +22,6 @@ import {
 import { formatKes, formatCountdown, type Plan } from "@/lib/palnet";
 import { getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
 import { useNetworkSettings } from "@/hooks/useAdminAlerts";
-import { BarChart } from "@/components/ui/chart";
 
 export const Route = createFileRoute("/admin/_layout/")({
   head: () => ({ meta: [{ title: "PalNet Admin — Dashboard" }] }),
