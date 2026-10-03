@@ -33,11 +33,18 @@ export const startGuestPayment = createServerFn({ method: "POST" })
 
     const { data: plan } = await supabaseAdmin
       .from("internet_plans")
-      .select("id, name, price_kes, is_active")
+      .select("id, name, price_kes, is_active, category")
       .eq("id", data.planId)
       .maybeSingle();
     if (!plan || !plan.is_active) {
       return { ok: false as const, message: "This package is not available right now" };
+    }
+    if (plan.category === "tv") {
+      const ipOk = /^(\d{1,3}\.){3}\d{1,3}$/.test(data.ipAddress ?? "");
+      const macOk = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(data.macAddress ?? "");
+      if (!ipOk || !macOk) {
+        return { ok: false as const, message: "Enter your TV's IP address and MAC address" };
+      }
     }
 
     const reference = `PN${crypto.randomUUID().replace(/-/g, "").slice(0, 20).toUpperCase()}`;
