@@ -8,8 +8,9 @@ export const Route = createFileRoute("/api/payments/callback")({
         const payload = await request.json().catch(() => null);
         if (!payload) return Response.json({ ok: false }, { status: 400 });
         const { processMpesaCallback } = await import("@/lib/routerService");
-        const result = await processMpesaCallback(payload as never);
-        return Response.json({ ok: result.ok, message: result.message });
+        await processMpesaCallback(payload as never).catch(() => null);
+        // Same reply for every request so callers cannot probe payment references.
+        return Response.json({ ok: true });
       },
     },
   },
