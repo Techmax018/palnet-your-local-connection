@@ -11,3 +11,7 @@ export const Route = createFileRoute("/api/payments/callback")({
         await processMpesaCallback(payload as never).catch(() => null);
         // Same reply for every request so callers cannot probe payment references.
         return Response.json({ ok: true });
+      },
+    },
+  },
+});
