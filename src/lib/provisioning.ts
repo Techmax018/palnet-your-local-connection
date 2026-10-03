@@ -84,14 +84,14 @@ export function parseDeviceRegistration(input: unknown):
   }
 
   const record = input as Record<string, unknown>;
-  const token = String(record.token ?? "").trim();
-  const siteIdentity = String(record.site_identity ?? "").trim();
-  const deviceId = String(record.device_id ?? "").trim();
-  const serialNumber = String(record.serial_number ?? "").trim();
-  const model = String(record.model ?? "").trim();
-  const macAddress = String(record.mac_address ?? "").trim();
-  const routerOsVersion = String(record.routeros_version ?? "").trim();
-  const boardName = String(record.board_name ?? "").trim();
+  const token = String(record["token"] ?? "").trim();
+  const siteIdentity = String(record["site_identity"] ?? "").trim();
+  const deviceId = String(record["device_id"] ?? "").trim();
+  const serialNumber = String(record["serial_number"] ?? "").trim();
+  const model = String(record["model"] ?? "").trim();
+  const macAddress = String(record["mac_address"] ?? "").trim();
+  const routerOsVersion = String(record["routeros_version"] ?? "").trim();
+  const boardName = String(record["board_name"] ?? "").trim();
 
   if (!token || !/^prov_[a-z0-9_-]+$/i.test(token)) {
     return { ok: false, message: "Invalid token format" };
