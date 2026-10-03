@@ -566,17 +566,19 @@ export const transferSession = createServerFn({ method: "POST" })
 
     const { data: tx } = await supabaseAdmin
       .from("transactions")
-      .select("id")
+      .select("id, plan_id, mac_address, phone_number")
       .eq("transaction_reference", code)
       .eq("status", "completed")
       .maybeSingle();
 
-    if (tx) {
-      // Find the subscription that was activated for this transaction
-      // We join via plan_id + created_at proximity (best match within 5 minutes)
-      const { data: sub } = await supabaseAdmin
+    if (tx && (tx.mac_address || tx.phone_number)) {
+      // Only the session bought by this payment (same device or phone and plan).
+      let q = supabaseAdmin
         .from("user_subscriptions")
         .select("id")
+        .eq("plan_id", tx.plan_id as string);
+      q = tx.mac_address ? q.eq("mac_address", tx.mac_address) : q.eq("phone_number", tx.phone_number as string);
+      const { data: sub } = await q
         .eq("status", "active")
         .gt("end_time", new Date().toISOString())
         .order("created_at", { ascending: false })
@@ -840,7 +842,7 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
 
     const { data: tx } = await supabaseAdmin
       .from("transactions")
-      .select("id, status, plan_id, created_at, internet_plans(name)")
+      .select("id, status, plan_id, created_at, mac_address, phone_number, internet_plans(name)")
       .eq("transaction_reference", data.reference)
       .maybeSingle();
 
@@ -870,15 +872,21 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
     }
 
     if (tx.status === "completed") {
-      // Find the active subscription created for this reference
-      const { data: sub } = await supabaseAdmin
-        .from("user_subscriptions")
-        .select("end_time")
+      // Only the session bought by this payment (same device or phone and plan).
+      let sub: { end_time: string } | null = null;
+      if (tx.mac_address || tx.phone_number) {
+        let q = supabaseAdmin
+          .from("user_subscriptions")
+          .select("end_time")
+          .eq("plan_id", tx.plan_id as string);
+        q = tx.mac_address ? q.eq("mac_address", tx.mac_address) : q.eq("phone_number", tx.phone_number as string);
+        sub = (await q
         .eq("status", "active")
         .gt("end_time", new Date().toISOString())
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle()).data as { end_time: string } | null;
+      }
 
       return {
         status: "completed",

@@ -16,12 +16,9 @@ export const Route = createFileRoute("/api/public/mpesa/callback")({
         }
 
         const { processMpesaCallback } = await import("@/lib/routerService");
-        const result = await processMpesaCallback(payload as never);
-
-        return Response.json({
-          ResultCode: result.ok ? 0 : 1,
-          ResultDesc: result.message,
-        });
+        await processMpesaCallback(payload as never).catch(() => null);
+        // Same reply for every request so callers cannot probe payment references.
+        return Response.json({ ResultCode: 0, ResultDesc: "Accepted" });
       },
     },
   },
