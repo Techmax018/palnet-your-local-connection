@@ -55,6 +55,14 @@ export function CheckoutDialog({
 
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [tvIp, setTvIp] = useState("");
+  const [tvMac, setTvMac] = useState("");
+  const [accountCode, setAccountCode] = useState<string | null>(null);
+  const isTv = plan?.category === "tv";
+  const isHome = plan?.category === "home";
+  const tvIpOk = /^(\d{1,3}\.){3}\d{1,3}$/.test(tvIp.trim());
+  const tvMacOk = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(tvMac.trim());
+  const canPay = !!plan && phone.trim().length >= 9 && (!isTv || (tvIpOk && tvMacOk));
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [payState, setPayState] = useState<PayState>({ step: "idle" });
 
@@ -70,6 +78,9 @@ export function CheckoutDialog({
         setPayState({ step: "idle" });
         setPhone("");
         setCode("");
+        setTvIp("");
+        setTvMac("");
+        setAccountCode(null);
       }, 300);
     }
   }, [open]);
@@ -133,16 +144,16 @@ export function CheckoutDialog({
     : (typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 60) : null);
 
   async function handlePay() {
-    if (!plan || phone.trim().length < 9) return;
+    if (!canPay || !plan) return;
     setPayState({ step: "idle" }); // reset before starting
     try {
       const result = await pay({
         data: {
           planId: plan.id,
           phone,
-          macAddress: getDeviceMac(),
-          ipAddress: getDeviceIp(),
-          deviceLabel,
+          macAddress: isTv ? tvMac.trim().toUpperCase().replace(/-/g, ":") : getDeviceMac(),
+          ipAddress: isTv ? tvIp.trim() : getDeviceIp(),
+          deviceLabel: isTv ? `SmartTV:${tvIp.trim()}` : deviceLabel,
         },
       });
 
@@ -152,6 +163,7 @@ export function CheckoutDialog({
         return;
       }
 
+      if (isTv || isHome) setAccountCode(`PAL-${result.reference.slice(2, 8)}`);
       setPayState({
         step: "waiting_pin",
         reference: result.reference,
@@ -239,6 +251,14 @@ export function CheckoutDialog({
                 Expires {new Date(payState.endTime).toLocaleString("en-KE", { dateStyle: "short", timeStyle: "short" })}
               </p>
             </div>
+
+            {accountCode && (
+              <div className="w-full rounded-xl border border-accent/30 bg-accent/5 p-3">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest">Your Account ID</p>
+                <p className="font-display text-xl font-black tracking-widest text-accent">{accountCode}</p>
+                <p className="text-xs text-muted-foreground">Keep this — use it with your phone number to reconnect or renew.</p>
+              </div>
+            )}
 
             <div className="flex items-center gap-1.5 text-xs text-success">
               <CheckCircle2 className="size-3.5" />
@@ -404,6 +424,21 @@ export function CheckoutDialog({
 
           {/* ── M-Pesa ── */}
           <TabsContent value="mpesa" className="space-y-3 pt-3">
+            {isTv && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tv-ip" className="text-xs">TV IP address *</Label>
+                  <Input id="tv-ip" inputMode="decimal" placeholder="192.168.88.25" value={tvIp} maxLength={15}
+                    onChange={(e) => setTvIp(e.target.value)} className="h-9 text-sm" aria-invalid={!!tvIp && !tvIpOk} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tv-mac" className="text-xs">TV MAC address *</Label>
+                  <Input id="tv-mac" placeholder="AA:BB:CC:11:22:33" value={tvMac} maxLength={17}
+                    onChange={(e) => setTvMac(e.target.value)} className="h-9 text-sm uppercase" aria-invalid={!!tvMac && !tvMacOk} />
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground">On the TV: Settings → Network → Network status.</p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="pay-phone" className="text-xs">M-Pesa phone number</Label>
               <Input
@@ -433,7 +468,7 @@ export function CheckoutDialog({
 
             <Button
               className="w-full font-display text-sm"
-              disabled={!plan || phone.trim().length < 9}
+              disabled={!canPay}
               onClick={handlePay}
             >
               {plan ? `Pay ${formatKes(plan.price_kes)} with M-Pesa` : "Send payment request"}

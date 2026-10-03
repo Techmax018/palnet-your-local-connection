@@ -188,20 +188,14 @@ function VoucherBar() {
 /* ─── Plan cards ───────────────────────────────────────────────────────────── */
 function HomePlanCard({ plan, badge, onSelect }: { plan: Plan; badge?: string | undefined; onSelect: (p: Plan) => void }) {
   return (
-    <div className="surface-panel relative overflow-hidden p-3 gap-0">
+    <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
       {badge && <span className="absolute right-2 top-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent border border-accent/30">{badge}</span>}
-      <div className="flex items-start justify-between gap-1">
-        <p className="font-display text-lg font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
-        <span className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5"><Gauge className="size-3 text-accent" />{plan.speed_limit_mbps} Mbps</span>
-      </div>
+      <p className="font-display text-lg font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
       <p className="mt-1 text-xs font-semibold text-foreground leading-snug">{plan.name}</p>
       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
-      <p className="mt-1.5 text-xs text-muted-foreground/70">Account ID auto-generated after payment.</p>
-      <Button size="sm" className="mt-2 w-full font-display text-xs h-7" onClick={() => onSelect(plan)}>
-        <Smartphone className="size-3" /> Pay with M-Pesa
-      </Button>
-    </div>
+      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
+    </button>
   );
 }
 
@@ -218,18 +212,14 @@ function HotspotCard({ plan, onSelect }: { plan: Plan; onSelect: (p: Plan) => vo
 }
 
 function TvPlanCard({ plan, onSelect }: { plan: Plan; onSelect: (p: Plan) => void }) {
-  const [tvIp, setTvIp] = useState("");
   return (
-    <div className="surface-panel relative overflow-hidden p-3 gap-0">
+    <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
       <p className="font-display text-xl font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
       <p className="mt-1 text-xs font-semibold text-foreground">{plan.name}</p>
       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
-      <Input value={tvIp} onChange={(e) => setTvIp(e.target.value)} placeholder="TV IP or Account Code" className="mt-2 h-7 text-xs" />
-      <Button size="sm" className="mt-2 w-full font-display text-xs h-7" onClick={() => onSelect(plan)}>
-        <Tv className="size-3" /> Activate
-      </Button>
-    </div>
+      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Tv className="size-3" />Smart TV</div>
+    </button>
   );
 }
 
