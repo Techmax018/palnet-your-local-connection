@@ -84,14 +84,14 @@ export function parseDeviceRegistration(input: unknown):
   }
 
   const record = input as Record<string, unknown>;
-  const token = String(record.token ?? "").trim();
-  const siteIdentity = String(record.site_identity ?? "").trim();
-  const deviceId = String(record.device_id ?? "").trim();
-  const serialNumber = String(record.serial_number ?? "").trim();
-  const model = String(record.model ?? "").trim();
-  const macAddress = String(record.mac_address ?? "").trim();
-  const routerOsVersion = String(record.routeros_version ?? "").trim();
-  const boardName = String(record.board_name ?? "").trim();
+  const token = String(record["token"] ?? "").trim();
+  const siteIdentity = String(record["site_identity"] ?? "").trim();
+  const deviceId = String(record["device_id"] ?? "").trim();
+  const serialNumber = String(record["serial_number"] ?? "").trim();
+  const model = String(record["model"] ?? "").trim();
+  const macAddress = String(record["mac_address"] ?? "").trim();
+  const routerOsVersion = String(record["routeros_version"] ?? "").trim();
+  const boardName = String(record["board_name"] ?? "").trim();
 
   if (!token || !/^prov_[a-z0-9_-]+$/i.test(token)) {
     return { ok: false, message: "Invalid token format" };
@@ -149,40 +149,48 @@ export function buildBootstrapScript({
 }: BootstrapScriptOptions): string {
   const baseUrl = resolveProvisionApiBaseUrl(apiBaseUrl);
   const site = rosEscape(normalizeSiteIdentity(siteIdentity));
+  const tok = rosEscape(token);
+  const key = rosEscape(heartbeatKey);
+  const ver = rosEscape(configVersion);
   const registerUrl = `${baseUrl}/api/public/provision/register`;
   const heartbeatUrl = `${baseUrl}/api/public/provision/heartbeat`;
-  return `# PalNet bootstrap (RouterOS 7.x)
-# config_version=${configVersion}
-:global palnet_site "${site}"
-:global palnet_token "${token}"
-:global palnet_config_version "${configVersion}"
-:global palnet_heartbeat_key "${heartbeatKey}"
+  // RouterOS: variable names must not contain "_"; inside strings a quote is \" .
+  const q = '\\"';
+  const regPayload =
+    `("{${q}token${q}:${q}${tok}${q},${q}site_identity${q}:${q}${site}${q},${q}device_id${q}:${q}" . $board . "${q},${q}serial_number${q}:${q}" . $serial . "${q},${q}model${q}:${q}" . $model . "${q},${q}mac_address${q}:${q}" . $mac . "${q},${q}routeros_version${q}:${q}" . $ros . "${q},${q}board_name${q}:${q}" . $board . "${q}}")`;
+  const hbPayload =
+    `("{${q}site${q}:${q}" . $site . "${q},${q}device_id${q}:${q}" . $site . "${q},${q}cpu_load${q}:${q}" . $cpu . "${q},${q}free_memory${q}:${q}" . $mem . "${q},${q}uptime${q}:${q}" . $up . "${q}}")`;
+  return `# PalNet bootstrap (RouterOS 7.x) config ${ver}
 /system backup save name="before-palnet-provision" dont-encrypt=yes
 /system identity set name="${site}"
-/system script
-remove [find name="PalNetRegister"]
-add name="PalNetRegister" policy=read,write,test source={
-  :local serial [/system routerboard get serial-number]
-  :local model [/system routerboard get model]
-  :local mac [/interface ethernet get [find default-name=ether1] mac-address]
-  :local ros [/system package get [find name~"routeros"] version]
-  :local board [/system identity get name]
-  :local payload ("{\"token\":\"${token}\",\"site_identity\":\"${site}\",\"device_id\":\"\" . \$board . \"\",\"serial_number\":\"\" . \$serial . \"\",\"model\":\"\" . \$model . \"\",\"mac_address\":\"\" . \$mac . \"\",\"routeros_version\":\"\" . \$ros . \"\",\"board_name\":\"\" . \$board . \"\"}")
-  /tool fetch url="${registerUrl}" mode=https http-method=post keep-result=no http-header-field="Content-Type: application/json" http-data=\$payload
+/system script remove [find name="PalNetRegister"]
+/system script add name="PalNetRegister" policy=read,write,test source={
+:local serial "unknown"
+:do { :set serial [/system routerboard get serial-number] } on-error={}
+:local model [/system resource get board-name]
+:local mac ""
+:do { :set mac [/interface ethernet get [find default-name=ether1] mac-address] } on-error={}
+:local ros [/system resource get version]
+:local board [/system identity get name]
+:local payload ${regPayload}
+/tool fetch url="${registerUrl}" mode=https http-method=post output=none http-header-field="Content-Type: application/json" http-data=$payload
 }
-/system script
-remove [find name="PalNetHeartbeat"]
-add name="PalNetHeartbeat" policy=read,write,test source={
-  :local cpu [/system resource get cpu-load]
-  :local mem [/system resource get free-memory]
-  :local up [/system resource get uptime]
-  :local site [/system identity get name]
-  /tool fetch url="${heartbeatUrl}" mode=https http-method=post keep-result=no http-header-field="Content-Type: application/json,X-PalNet-Key: ${heartbeatKey}" http-data=("{\"site\":\"\" . \$site . \"\",\"device_id\":\"\" . \$site . \"\",\"cpu_load\":\"\" . \$cpu . \"\",\"free_memory\":\"\" . \$mem . \"\",\"uptime\":\"\" . \$up . \"\"}")
+/system script remove [find name="PalNetHeartbeat"]
+/system script add name="PalNetHeartbeat" policy=read,write,test source={
+:local cpu [/system resource get cpu-load]
+:local mem [/system resource get free-memory]
+:local up [/system resource get uptime]
+:local site [/system identity get name]
+:local payload ${hbPayload}
+/tool fetch url="${heartbeatUrl}" mode=https http-method=post output=none http-header-field="Content-Type: application/json,X-PalNet-Key: ${key}" http-data=$payload
 }
-/system scheduler
-remove [find name="PalNetRegisterSchedule"]
-add name="PalNetRegisterSchedule" interval=5m on-event="PalNetRegister" start-time=startup
-remove [find name="PalNetHeartbeatSchedule"]
-add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat" start-time=startup
+/system scheduler remove [find name="PalNetRegisterSchedule"]
+/system scheduler add name="PalNetRegisterSchedule" interval=5m on-event="PalNetRegister" start-time=startup
+/system scheduler remove [find name="PalNetHeartbeatSchedule"]
+/system scheduler add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat" start-time=startup
+:delay 2s
+/system script run PalNetRegister
+/system script run PalNetHeartbeat
+:log info "PalNet provisioning complete"
 `;
 }

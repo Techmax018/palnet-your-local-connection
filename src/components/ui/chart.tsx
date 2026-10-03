@@ -1,27 +1,4 @@
 import * as React from "react";
-import { ChartContainer, ChartTooltip, ChartLegend, ChartTooltipContent } from "./chart";
-import { BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
-
-export default function BarChart({ data, height = 200 }: { data: { label: string; revenue: number }[]; height?: number }) {
-  const config = { series: { color: "#00f3ff" } };
-  return (
-    <ChartContainer config={config} className="h-[200px]">
-      <ResponsiveContainer width="100%" height={height}>
-        <ReBarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-          <XAxis dataKey="label" stroke="#94A3B8" />
-          <YAxis stroke="#94A3B8" />
-          <Tooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="revenue" fill="#00f3ff" />
-        </ReBarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  );
-}
-
-export { BarChart };
-
-import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 
 import { cn } from "@/lib/utils";
