@@ -141,11 +141,11 @@ export function parseDeviceRegistration(input: unknown):
 }
 
 export type NetworkOverrides = {
-  wan?: string;
-  lanBridge?: string;
-  lanPorts?: string[];
-  gateway?: string; // CIDR, e.g. 10.10.0.1/22
-  pool?: string; // e.g. 10.10.0.10-10.10.3.250
+  wan?: string | undefined;
+  lanBridge?: string | undefined;
+  lanPorts?: string[] | undefined;
+  gateway?: string | undefined; // CIDR, e.g. 10.10.0.1/22
+  pool?: string | undefined; // e.g. 10.10.0.10-10.10.3.250
 };
 
 export type ResolvedNetwork = {
