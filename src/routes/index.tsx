@@ -190,7 +190,11 @@ function HomePlanCard({ plan, badge, onSelect }: { plan: Plan; badge?: string | 
   return (
     <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
-      {badge && <span className="absolute right-2 top-2 rounded-full bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent border border-accent/30">{badge}</span>}
+      {badge && (
+        <span className="mb-1.5 inline-flex w-fit items-center rounded-full border border-accent/30 bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+          {badge}
+        </span>
+      )}
       <p className="font-display text-lg font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
       <p className="mt-1 text-xs font-semibold text-foreground leading-snug">{plan.name}</p>
       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
