@@ -206,7 +206,7 @@ function HotspotCard({ plan, onSelect }: { plan: Plan; onSelect: (p: Plan) => vo
       <p className="font-display text-xl font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
       <p className="mt-1 text-xs font-semibold text-foreground line-clamp-2 leading-snug">{plan.name}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{planDurationLabel(plan)}</p>
-      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps}M</div>
+      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
     </button>
   );
 }
