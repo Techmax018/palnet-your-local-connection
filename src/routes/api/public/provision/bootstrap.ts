@@ -39,12 +39,20 @@ export const Route = createFileRoute("/api/public/provision/bootstrap")({
 
         if (!claimed?.length) return new Response("Token already used", { status: 410 });
 
+        const sp = new URL(request.url).searchParams;
         const script = buildBootstrapScript({
           siteIdentity: row.site_identity || validation.siteIdentity || "PalNet-Site",
           token: row.token,
           heartbeatKey,
-          configVersion: "v1",
+          configVersion: "v2",
           apiBaseUrl: requestOrigin,
+          network: {
+            wan: sp.get("wan") ?? undefined,
+            lanBridge: sp.get("lan") ?? undefined,
+            lanPorts: sp.get("ports")?.split(",") ?? undefined,
+            gateway: sp.get("gw") ?? undefined,
+            pool: sp.get("pool") ?? undefined,
+          },
         });
 
         return new Response(script, {

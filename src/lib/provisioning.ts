@@ -140,14 +140,138 @@ export function parseDeviceRegistration(input: unknown):
   };
 }
 
+export type NetworkOverrides = {
+  wan?: string | undefined;
+  lanBridge?: string | undefined;
+  lanPorts?: string[] | undefined;
+  gateway?: string | undefined; // CIDR, e.g. 10.10.0.1/22
+  pool?: string | undefined; // e.g. 10.10.0.10-10.10.3.250
+};
+
+export type ResolvedNetwork = {
+  wan: string;
+  lanBridge: string;
+  lanPorts: string[];
+  gatewayIp: string;
+  prefix: number;
+  networkCidr: string;
+  pool: string;
+};
+
+const IFACE_RE = /^[A-Za-z0-9_.-]{1,32}$/;
+const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+
+function ipToInt(ip: string): number {
+  return ip.split(".").reduce((acc, o) => (acc << 8) + Number(o), 0) >>> 0;
+}
+function intToIp(n: number): string {
+  return [24, 16, 8, 0].map((s) => (n >>> s) & 255).join(".");
+}
+
+export const DEFAULT_NETWORK = {
+  wan: "ether1",
+  lanBridge: "bridge-hotspot",
+  lanPorts: ["ether2", "ether3", "ether4", "ether5"],
+  gateway: "10.10.0.1/22",
+  pool: "10.10.0.10-10.10.3.250",
+};
+
+/** Validates overrides; invalid values fall back to defaults. */
+export function resolveNetwork(o: NetworkOverrides = {}): ResolvedNetwork {
+  const wan = o.wan && IFACE_RE.test(o.wan) ? o.wan : DEFAULT_NETWORK.wan;
+  const lanBridge = o.lanBridge && IFACE_RE.test(o.lanBridge) ? o.lanBridge : DEFAULT_NETWORK.lanBridge;
+  const ports = (o.lanPorts ?? []).map((p) => p.trim()).filter((p) => IFACE_RE.test(p) && p !== wan);
+  const lanPorts = ports.length ? ports.slice(0, 24) : DEFAULT_NETWORK.lanPorts.filter((p) => p !== wan);
+
+  let gw = DEFAULT_NETWORK.gateway;
+  const gm = (o.gateway ?? "").trim().match(/^([\d.]+)\/(\d{1,2})$/);
+  if (gm && gm[1] && IP_RE.test(gm[1]) && Number(gm[2]) >= 16 && Number(gm[2]) <= 30) gw = `${gm[1]}/${gm[2]}`;
+  const [gatewayIp = "10.10.0.1", prefixStr = "22"] = gw.split("/");
+  const prefix = Number(prefixStr);
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  const netInt = (ipToInt(gatewayIp) & mask) >>> 0;
+  const networkCidr = `${intToIp(netInt)}/${prefix}`;
+
+  let pool = "";
+  const pm = (o.pool ?? "").trim().match(/^([\d.]+)-([\d.]+)$/);
+  if (pm && pm[1] && pm[2] && IP_RE.test(pm[1]) && IP_RE.test(pm[2])) {
+    const a = ipToInt(pm[1]);
+    const b = ipToInt(pm[2]);
+    if (a <= b && ((a & mask) >>> 0) === netInt && ((b & mask) >>> 0) === netInt) pool = `${pm[1]}-${pm[2]}`;
+  }
+  if (!pool) {
+    if (gw === DEFAULT_NETWORK.gateway) pool = DEFAULT_NETWORK.pool;
+    else {
+      const broadcast = (netInt | (~mask >>> 0)) >>> 0;
+      pool = `${intToIp(netInt + 10)}-${intToIp(broadcast - 5)}`;
+    }
+  }
+  return { wan, lanBridge, lanPorts, gatewayIp, prefix, networkCidr, pool };
+}
+
+function buildNetworkSection(net: ResolvedNetwork, portalHost: string): string {
+  const b = net.lanBridge;
+  const ports = net.lanPorts
+    .map((p) => `:do { /interface bridge port add bridge="${b}" interface="${p}" comment="PalNet" } on-error={}`)
+    .join("\n");
+  const gardenHosts = [portalHost, "*payhero.co.ke", "backend.payhero.co.ke", "api.payhero.co.ke", "*safaricom.co.ke"];
+  const garden = gardenHosts
+    .map((h) => `/ip hotspot walled-garden add dst-host="${h}" action=allow comment="PalNet"`)
+    .join("\n");
+  const gardenIp = gardenHosts
+    .map((h) => `/ip hotspot walled-garden ip add dst-host="${h}" action=accept comment="PalNet"`)
+    .join("\n");
+  return `# --- Network: bridge ---
+:if ([:len [/interface bridge find name="${b}"]] = 0) do={ /interface bridge add name="${b}" comment="PalNet" }
+/interface bridge port remove [find comment="PalNet"]
+${ports}
+# --- IP addressing ---
+/ip address remove [find comment="PalNet"]
+/ip address add address=${net.gatewayIp}/${net.prefix} interface="${b}" comment="PalNet"
+# --- Pool & DHCP ---
+/ip dhcp-server remove [find name="palnet-dhcp"]
+/ip pool remove [find name="palnet-pool"]
+/ip pool add name="palnet-pool" ranges=${net.pool}
+/ip dhcp-server add name="palnet-dhcp" interface="${b}" address-pool="palnet-pool" lease-time=1h disabled=no
+/ip dhcp-server network remove [find comment="PalNet"]
+/ip dhcp-server network add address=${net.networkCidr} gateway=${net.gatewayIp} dns-server=1.1.1.1,8.8.8.8 comment="PalNet"
+# --- DNS ---
+/ip dns set allow-remote-requests=yes servers=1.1.1.1,8.8.8.8
+# --- NAT ---
+/ip firewall nat remove [find comment="PalNet-masq"]
+/ip firewall nat add chain=srcnat out-interface="${net.wan}" action=masquerade comment="PalNet-masq"
+# --- Hotspot ---
+/ip hotspot remove [find name="palnet-hotspot"]
+/ip hotspot profile remove [find name="palnet-profile"]
+/ip hotspot profile add name="palnet-profile" hotspot-address=${net.gatewayIp} dns-name="login.palnet" html-directory=hotspot login-by=http-chap,http-pap,mac-cookie
+:do { /file remove [find name="hotspot/login.html"] } on-error={}
+:do { /file add name="hotspot/login.html" contents="<html><head><meta http-equiv=\\"refresh\\" content=\\"0; url=https://${portalHost}/?mac=\\$(mac)&ip=\\$(ip)&link=\\$(link-login-only)\\"></head><body>Redirecting to PalNet...</body></html>" } on-error={ :log warning "PalNet: could not write hotspot/login.html" }
+/ip hotspot add name="palnet-hotspot" interface="${b}" address-pool="palnet-pool" profile="palnet-profile" disabled=no
+# --- Walled garden ---
+/ip hotspot walled-garden remove [find comment="PalNet"]
+${garden}
+/ip hotspot walled-garden ip remove [find comment="PalNet"]
+${gardenIp}
+# --- Anti-tethering (TTL=1) ---
+/ip firewall mangle remove [find comment="PalNet-ttl"]
+/ip firewall mangle add chain=postrouting out-interface="${b}" action=change-ttl new-ttl=set:1 passthrough=no comment="PalNet-ttl"
+`;
+}
+
 export function buildBootstrapScript({
   siteIdentity,
   token,
   heartbeatKey,
   configVersion = "v1",
   apiBaseUrl,
-}: BootstrapScriptOptions): string {
+  network,
+}: BootstrapScriptOptions & { network?: NetworkOverrides }): string {
   const baseUrl = resolveProvisionApiBaseUrl(apiBaseUrl);
+  const net = resolveNetwork(network);
+  const portalHost = (() => {
+    try { return new URL(baseUrl).host; } catch { return "palnet-wifi.lovable.app"; }
+  })();
+  const networkSection = buildNetworkSection(net, portalHost.includes("lovable.app") ? "palnet-wifi.lovable.app" : portalHost);
   const site = rosEscape(normalizeSiteIdentity(siteIdentity));
   const tok = rosEscape(token);
   const key = rosEscape(heartbeatKey);
@@ -163,6 +287,7 @@ export function buildBootstrapScript({
   return `# PalNet bootstrap (RouterOS 7.x) config ${ver}
 /system backup save name="before-palnet-provision" dont-encrypt=yes
 /system identity set name="${site}"
+${networkSection}
 /system script remove [find name="PalNetRegister"]
 /system script add name="PalNetRegister" policy=read,write,test source={
 :local serial "unknown"

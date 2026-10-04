@@ -48,7 +48,7 @@ describe('zero-touch provisioning', () => {
     });
 
     expect(script).toContain('/system identity set name="Nairobi-01"');
-    expect(script).toContain('config_version=v1');
+    expect(script).toContain('config v1');
     expect(script).toContain('PalNetHeartbeat');
     expect(script).toContain('heartbeat-key-123456');
     expect(script).toContain('https://example.com/api/public/provision/register');
