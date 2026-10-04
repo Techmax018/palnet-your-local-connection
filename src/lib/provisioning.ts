@@ -185,8 +185,8 @@ export function resolveNetwork(o: NetworkOverrides = {}): ResolvedNetwork {
 
   let gw = DEFAULT_NETWORK.gateway;
   const gm = (o.gateway ?? "").trim().match(/^([\d.]+)\/(\d{1,2})$/);
-  if (gm && IP_RE.test(gm[1]) && Number(gm[2]) >= 16 && Number(gm[2]) <= 30) gw = `${gm[1]}/${gm[2]}`;
-  const [gatewayIp, prefixStr] = gw.split("/");
+  if (gm && gm[1] && IP_RE.test(gm[1]) && Number(gm[2]) >= 16 && Number(gm[2]) <= 30) gw = `${gm[1]}/${gm[2]}`;
+  const [gatewayIp = "10.10.0.1", prefixStr = "22"] = gw.split("/");
   const prefix = Number(prefixStr);
   const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
   const netInt = (ipToInt(gatewayIp) & mask) >>> 0;
@@ -194,7 +194,7 @@ export function resolveNetwork(o: NetworkOverrides = {}): ResolvedNetwork {
 
   let pool = "";
   const pm = (o.pool ?? "").trim().match(/^([\d.]+)-([\d.]+)$/);
-  if (pm && IP_RE.test(pm[1]) && IP_RE.test(pm[2])) {
+  if (pm && pm[1] && pm[2] && IP_RE.test(pm[1]) && IP_RE.test(pm[2])) {
     const a = ipToInt(pm[1]);
     const b = ipToInt(pm[2]);
     if (a <= b && ((a & mask) >>> 0) === netInt && ((b & mask) >>> 0) === netInt) pool = `${pm[1]}-${pm[2]}`;
