@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { Plan } from "@/lib/palnet";
-import { lookupGuestSession } from "@/lib/palnet.functions";
+import { FALLBACK_PLANS, type Plan } from "@/lib/palnet";
+import { lookupGuestSession, listPublicPlans } from "@/lib/palnet.functions";
 import type { GuestSession } from "@/lib/palnet.functions";
 
 export function useSession() {
@@ -46,15 +46,22 @@ export function useIsAdmin(userId: string | undefined) {
 }
 
 export function usePlans() {
+  const list = useServerFn(listPublicPlans);
   return useQuery({
     queryKey: ["plans"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("internet_plans")
-        .select("*")
-        .order("price_kes", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as Plan[];
+    // Packages must always render, even when the hotspot blocks or slows the request.
+    placeholderData: FALLBACK_PLANS,
+    retry: 1,
+    queryFn: async (): Promise<Plan[]> => {
+      try {
+        const rows = (await Promise.race([
+          list(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 8000)),
+        ])) as Plan[];
+        return rows.length ? rows : FALLBACK_PLANS;
+      } catch {
+        return FALLBACK_PLANS;
+      }
     },
   });
 }
@@ -182,4 +189,19 @@ export function useActiveSession(userId: string | undefined) {
     data: guestSession.data ? ({ ...guestSession.data, isGuest: true } satisfies NormalizedSession) : null,
     isLoading: guestSession.isLoading,
   };
+}
+
+/** MikroTik login link + original URL passed by the router's login.html. */
+export function getHotspotLink(): { link: string | null; dst: string | null } {
+  if (typeof window === "undefined") return { link: null, dst: null };
+  const params = new URLSearchParams(window.location.search);
+  const link = params.get("link");
+  const dst = params.get("dst");
+  try {
+    if (link) sessionStorage.setItem("palnet_link", link);
+    if (dst) sessionStorage.setItem("palnet_dst", dst);
+    return { link: link ?? sessionStorage.getItem("palnet_link"), dst: dst ?? sessionStorage.getItem("palnet_dst") };
+  } catch {
+    return { link, dst };
+  }
 }

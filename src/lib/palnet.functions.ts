@@ -837,6 +837,7 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
     subscriptionEndTime: string | null;
     planName: string | null;
     message: string;
+    hotspot?: { username: string; password: string } | null;
   }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -873,11 +874,11 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
 
     if (tx.status === "completed") {
       // Only the session bought by this payment (same device or phone and plan).
-      let sub: { end_time: string } | null = null;
+      let sub: { id: string; end_time: string } | null = null;
       if (tx.mac_address || tx.phone_number) {
         let q = supabaseAdmin
           .from("user_subscriptions")
-          .select("end_time")
+          .select("id, end_time")
           .eq("plan_id", tx.plan_id as string);
         q = tx.mac_address ? q.eq("mac_address", tx.mac_address) : q.eq("phone_number", tx.phone_number as string);
         sub = (await q
@@ -885,7 +886,7 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
         .gt("end_time", new Date().toISOString())
         .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle()).data as { end_time: string } | null;
+        .maybeSingle()).data as { id: string; end_time: string } | null;
       }
 
       return {
@@ -893,6 +894,7 @@ export const pollPaymentStatus = createServerFn({ method: "POST" })
         subscriptionEndTime: (sub?.end_time as string | null) ?? null,
         planName: (tx.internet_plans as any)?.name ?? null,
         message: "Payment confirmed — you are online!",
+        hotspot: sub ? (await import("./palnet")).hotspotCredentials(sub.id) : null,
       };
     }
 
@@ -925,3 +927,15 @@ export const deleteVoucher = createServerFn({ method: "POST" })
     if (error) return { ok: false as const, message: error.message };
     return { ok: true as const, message: "Voucher deleted" };
   });
+
+/** Public package list served from the portal's own address (always allowed by the hotspot). */
+export const listPublicPlans = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("internet_plans")
+    .select("id, name, category, duration_type, duration_value, download_limit_mb, speed_limit_mbps, price_kes, is_active")
+    .eq("is_active", true)
+    .order("price_kes", { ascending: true });
+  if (error) throw new Error("Could not load packages");
+  return (data ?? []).map((p) => ({ ...p, price_kes: Number(p.price_kes) }));
+});

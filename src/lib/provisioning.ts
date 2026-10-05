@@ -245,7 +245,7 @@ ${ports}
 /ip hotspot profile remove [find name="palnet-profile"]
 /ip hotspot profile add name="palnet-profile" hotspot-address=${net.gatewayIp} dns-name="login.palnet" html-directory=hotspot login-by=http-chap,http-pap,mac-cookie
 :do { /file remove [find name="hotspot/login.html"] } on-error={}
-:do { /file add name="hotspot/login.html" contents="<html><head><meta http-equiv=\\"refresh\\" content=\\"0; url=https://${portalHost}/?mac=\\$(mac)&ip=\\$(ip)&link=\\$(link-login-only)\\"></head><body>Redirecting to PalNet...</body></html>" } on-error={ :log warning "PalNet: could not write hotspot/login.html" }
+:do { /file add name="hotspot/login.html" contents="<html><head><meta http-equiv=\\"refresh\\" content=\\"0; url=https://${portalHost}/?mac=\\$(mac)&ip=\\$(ip)&link=\\$(link-login-only)&dst=\\$(link-orig-esc)&err=\\$(error-orig)\\"></head><body>Redirecting to PalNet...</body></html>" } on-error={ :log warning "PalNet: could not write hotspot/login.html" }
 /ip hotspot add name="palnet-hotspot" interface="${b}" address-pool="palnet-pool" profile="palnet-profile" disabled=no
 # --- Walled garden ---
 /ip hotspot walled-garden remove [find comment="PalNet"]
