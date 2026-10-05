@@ -278,6 +278,7 @@ export function buildBootstrapScript({
   const ver = rosEscape(configVersion);
   const registerUrl = `${baseUrl}/api/public/provision/register`;
   const heartbeatUrl = `${baseUrl}/api/public/provision/heartbeat`;
+  const usersUrl = `${baseUrl}/api/public/provision/users`;
   // RouterOS: variable names must not contain "_"; inside strings a quote is \" .
   const q = '\\"';
   const regPayload =
@@ -309,6 +310,16 @@ ${networkSection}
 :local payload ${hbPayload}
 /tool fetch url="${heartbeatUrl}" mode=https http-method=post output=none http-header-field="Content-Type: application/json,X-PalNet-Key: ${key}" http-data=$payload
 }
+/system script remove [find name="PalNetUsers"]
+/system script add name="PalNetUsers" policy=read,write,test source={
+:do {
+/tool fetch url="${usersUrl}" mode=https http-header-field="X-PalNet-Key: ${key}" dst-path="palnet-users.rsc"
+:delay 1s
+/import file-name="palnet-users.rsc"
+} on-error={ :log warning "PalNet: user sync failed" }
+}
+/system scheduler remove [find name="PalNetUsersSchedule"]
+/system scheduler add name="PalNetUsersSchedule" interval=20s on-event="PalNetUsers" start-time=startup
 /system scheduler remove [find name="PalNetRegisterSchedule"]
 /system scheduler add name="PalNetRegisterSchedule" interval=5m on-event="PalNetRegister" start-time=startup
 /system scheduler remove [find name="PalNetHeartbeatSchedule"]
