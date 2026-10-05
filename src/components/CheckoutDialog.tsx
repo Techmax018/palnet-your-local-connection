@@ -28,13 +28,13 @@ import { formatKes, formatCountdown, planDurationLabel, type Plan } from "@/lib/
 import {
   startGuestPayment, redeemGuestVoucher, pollPaymentStatus,
 } from "@/lib/palnet.functions";
-import { getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
+import { getDeviceMac, getDeviceIp, getHotspotLink } from "@/hooks/usePalNet";
 
 type PayState =
   | { step: "idle" }
   | { step: "waiting_pin"; reference: string; phone: string; planName: string }
   | { step: "verifying"; reference: string; planName: string }
-  | { step: "connected"; planName: string; endTime: string }
+  | { step: "connected"; planName: string; endTime: string; hotspot?: { username: string; password: string } | null }
   | { step: "error"; reason: "failed" | "expired" | "cancelled"; planName: string };
 
 export function CheckoutDialog({
@@ -85,6 +85,32 @@ export function CheckoutDialog({
     }
   }, [open]);
 
+  // Hotspot auto-login: the router syncs paid users every ~20s, then we submit its login form.
+  const LOGIN_DELAY_S = 20;
+  const [hotspotLink] = useState(() => getHotspotLink());
+  const [loginIn, setLoginIn] = useState<number | null>(null);
+  const loginFired = useRef(false);
+  function submitHotspotLogin() {
+    if (loginFired.current) return;
+    const form = document.getElementById("mikrotik-login-form") as HTMLFormElement | null;
+    if (!form) return;
+    loginFired.current = true;
+    form.submit();
+  }
+  useEffect(() => {
+    if (payState.step !== "connected" || !payState.hotspot || !hotspotLink.link) return;
+    loginFired.current = false;
+    const started = Date.now();
+    setLoginIn(LOGIN_DELAY_S);
+    const t = setInterval(() => {
+      const left = LOGIN_DELAY_S - Math.floor((Date.now() - started) / 1000);
+      setLoginIn(Math.max(left, 0));
+      if (left <= 0) { clearInterval(t); submitHotspotLogin(); }
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payState.step]);
+
   // Start/stop countdown ticker
   useEffect(() => {
     if (payState.step === "connected") {
@@ -112,6 +138,7 @@ export function CheckoutDialog({
             step: "connected",
             planName: result.planName ?? "PalNet Access",
             endTime: result.subscriptionEndTime ?? new Date(Date.now() + 3_600_000).toISOString(),
+            hotspot: result.hotspot ?? null,
           });
           await queryClient.invalidateQueries();
         } else if (result.status === "pending" && payState.step === "waiting_pin") {
@@ -260,10 +287,31 @@ export function CheckoutDialog({
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 text-xs text-success">
-              <CheckCircle2 className="size-3.5" />
-              Connected to PalNet
-            </div>
+            {payState.hotspot && hotspotLink.link ? (
+              <form
+                id="mikrotik-login-form"
+                name="login"
+                method="post"
+                action={hotspotLink.link}
+                className="w-full space-y-2"
+              >
+                <input type="hidden" name="username" value={payState.hotspot.username} />
+                <input type="hidden" name="password" value={payState.hotspot.password} />
+                <input type="hidden" name="dst" value={hotspotLink.dst ?? ""} />
+                <input type="hidden" name="popup" value="true" />
+                <p className="text-xs text-muted-foreground">
+                  {loginIn && loginIn > 0 ? `Connecting you to the internet in ${loginIn}s…` : "Connecting you to the internet…"}
+                </p>
+                <Button type="button" size="sm" className="w-full text-xs" onClick={submitHotspotLogin}>
+                  <Wifi className="size-3.5" /> Connect now
+                </Button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-success">
+                <CheckCircle2 className="size-3.5" />
+                Connected to PalNet
+              </div>
+            )}
 
             <Button
               variant="outline"
