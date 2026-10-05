@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Portal packages load via same-origin server fn with FALLBACK_PLANS backup; hotspot login uses router-synced users (provision/users) — the hotspot walled garden only allows the portal host.
