@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Palette,
   Package,
   Router,
   Search,
@@ -78,6 +79,13 @@ const NAV = [
     icon: Package,
     exact: false,
     emoji: "📦",
+  },
+  {
+    to: "/admin/themes",
+    label: "Themes",
+    icon: Palette,
+    exact: false,
+    emoji: "🎨",
   },
   {
     to: "/admin/anti-tethering",

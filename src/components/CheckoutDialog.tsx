@@ -13,8 +13,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  AlertCircle, CheckCircle2, Clock, Gauge, Loader2,
-  RefreshCw, Smartphone, Ticket, Wifi, XCircle,
+  AlertCircle, CheckCircle2, Clock, Flower2, Gauge, Loader2,
+  PartyPopper, RefreshCw, Smartphone, Snowflake, Ticket, Wifi, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -29,6 +29,7 @@ import {
   startGuestPayment, redeemGuestVoucher, pollPaymentStatus,
 } from "@/lib/palnet.functions";
 import { getDeviceMac, getDeviceIp, getHotspotLink } from "@/hooks/usePalNet";
+import { useNetworkSettings } from "@/hooks/useAdminAlerts";
 
 type PayState =
   | { step: "idle" }
@@ -36,6 +37,64 @@ type PayState =
   | { step: "verifying"; reference: string; planName: string }
   | { step: "connected"; planName: string; endTime: string; hotspot?: { username: string; password: string } | null }
   | { step: "error"; reason: "failed" | "expired" | "cancelled"; planName: string };
+
+const CHECKOUT_EVENT_THEMES = {
+  christmas: {
+    label: "Christmas Snow",
+    message: "Season's greetings from PalNet.",
+    icon: Snowflake,
+    bannerClass: "border-sky-300/25 bg-sky-400/10 text-sky-200",
+    loaderColor: "#7dd3fc",
+  },
+  "new-year": {
+    label: "New Year",
+    message: "Here's to a brighter year, connected.",
+    icon: PartyPopper,
+    bannerClass: "border-amber-300/25 bg-amber-400/10 text-amber-200",
+    loaderColor: "#fbbf24",
+  },
+  easter: {
+    label: "Easter",
+    message: "Warm seasonal wishes from PalNet.",
+    icon: Flower2,
+    bannerClass: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200",
+    loaderColor: "#4ade80",
+  },
+} as const;
+
+function CheckoutEventBanner({ theme }: { theme: keyof typeof CHECKOUT_EVENT_THEMES | null }) {
+  if (!theme) return null;
+  const eventTheme = CHECKOUT_EVENT_THEMES[theme];
+  const ThemeIcon = eventTheme.icon;
+  return (
+    <div className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left ${eventTheme.bannerClass}`}>
+      <ThemeIcon className="size-4 shrink-0" aria-hidden="true" />
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider">{eventTheme.label}</p>
+        <p className="text-[11px] text-foreground/75">{eventTheme.message}</p>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutLogoTreatment({ treatment }: { treatment: string }) {
+  if (treatment === "santa-hat") {
+    return (
+      <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-1 z-10 h-6 w-7 rotate-[22deg]">
+        <span className="absolute bottom-1 left-1 h-4 w-5 rounded-t-full bg-red-600 shadow-sm [clip-path:polygon(0_100%,100%_100%,72%_0)]" />
+        <span className="absolute bottom-0 left-0 h-1.5 w-5 rounded-full bg-white shadow-sm" />
+        <span className="absolute right-0 top-0 size-2 rounded-full bg-white shadow-sm" />
+      </span>
+    );
+  }
+  if (treatment === "new-year") {
+    return <PartyPopper className="absolute -right-1 -top-1 z-10 size-6 rounded-full border border-amber-200/70 bg-amber-400 p-1 text-amber-950 shadow-md" aria-hidden="true" />;
+  }
+  if (treatment === "easter") {
+    return <Flower2 className="absolute -right-1 -top-1 z-10 size-6 rounded-full border border-emerald-100/70 bg-emerald-400 p-1 text-emerald-950 shadow-md" aria-hidden="true" />;
+  }
+  return null;
+}
 
 export function CheckoutDialog({
   plan,
@@ -49,6 +108,7 @@ export function CheckoutDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
+  const { data: settings } = useNetworkSettings();
   const pay = useServerFn(startGuestPayment);
   const redeem = useServerFn(redeemGuestVoucher);
   const poll = useServerFn(pollPaymentStatus);
@@ -65,6 +125,13 @@ export function CheckoutDialog({
   const canPay = !!plan && phone.trim().length >= 9 && (!isTv || (tvIpOk && tvMacOk));
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [payState, setPayState] = useState<PayState>({ step: "idle" });
+  const savedEventTheme = settings?.["dashboard_event_theme"];
+  const activeEventTheme = savedEventTheme && savedEventTheme in CHECKOUT_EVENT_THEMES
+    ? CHECKOUT_EVENT_THEMES[savedEventTheme as keyof typeof CHECKOUT_EVENT_THEMES]
+    : null;
+  const savedLogoTreatment = settings?.["dashboard_logo_treatment"];
+  const logoTreatment = savedLogoTreatment
+    ?? (savedEventTheme === "christmas" ? "santa-hat" : "standard");
 
   // Live countdown in connected state
   const [now, setNow] = useState(Date.now());
@@ -247,17 +314,12 @@ export function CheckoutDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-xs text-center">
           <div className="flex flex-col items-center gap-4 py-4">
+            <CheckoutEventBanner theme={activeEventTheme ? savedEventTheme as keyof typeof CHECKOUT_EVENT_THEMES : null} />
             {/* Animated wifi icon */}
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden"
-                style={{
-                  background: "linear-gradient(135deg,rgba(0,243,255,0.02),rgba(0,243,255,0.01))",
-                  border: "1px solid rgba(0,243,255,0.06)",
-                  boxShadow: "0 0 20px rgba(0,243,255,0.12)",
-                }}
-              >
-                <img src="/favicon.png" alt="PalNet" className="h-12 w-12 object-contain" />
-              </div>
+            <div className="relative flex h-16 w-16 items-center justify-center overflow-visible rounded-2xl border border-cyan-400/20 bg-cyan-400/5 shadow-[0_0_20px_rgba(0,243,255,0.12)]">
+              <img src="/favicon.png" alt="PalNet" className="size-12 rounded-xl object-contain" />
+              <CheckoutLogoTreatment treatment={logoTreatment} />
+            </div>
 
             <div>
               <p className="font-display text-base font-black text-foreground">
@@ -375,6 +437,8 @@ export function CheckoutDialog({
 
   if (payState.step === "waiting_pin" || payState.step === "verifying") {
     const isVerifying = payState.step === "verifying";
+    const StatusIcon = isVerifying ? CheckCircle2 : Smartphone;
+    const loaderColor = activeEventTheme?.loaderColor ?? "#00f3ff";
     return (
       <Dialog open={open} onOpenChange={(o) => {
         if (!o) setPayState({ step: "error", reason: "cancelled", planName: payState.planName });
@@ -382,20 +446,21 @@ export function CheckoutDialog({
       }}>
         <DialogContent className="sm:max-w-xs text-center">
           <div className="flex flex-col items-center gap-5 py-4">
+            <CheckoutEventBanner theme={activeEventTheme ? savedEventTheme as keyof typeof CHECKOUT_EVENT_THEMES : null} />
+
             {/* Animated loader ring */}
             <div className="relative">
               <div
                 className="h-16 w-16 rounded-full border-2 border-cyan-400/20 animate-spin"
-                style={{ borderTopColor: "#00f3ff" }}
+                style={{ borderTopColor: loaderColor }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                {isVerifying
-                  ? <CheckCircle2 className="size-6 text-cyan-400" />
-                  : <Smartphone className="size-6 text-cyan-400" />}
+                <StatusIcon className="size-6" style={{ color: loaderColor }} />
               </div>
             </div>
 
             <div className="space-y-1.5">
+              <CheckoutEventBanner theme={activeEventTheme ? savedEventTheme as keyof typeof CHECKOUT_EVENT_THEMES : null} />
               <p className="font-display text-sm font-bold text-foreground">
                 {isVerifying ? "Verifying Payment…" : "Check Your Phone"}
               </p>
@@ -408,8 +473,8 @@ export function CheckoutDialog({
 
             {/* Plan summary pill */}
             {plan && (
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground w-full justify-center">
-                <Gauge className="size-3.5 text-accent shrink-0" />
+              <div className="flex w-full items-center justify-center gap-3 rounded-xl border border-border/70 bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+                <Gauge className="size-3.5 shrink-0 text-accent" />
                 <span className="font-semibold text-foreground">{plan.name}</span>
                 <span>·</span>
                 <span>{formatKes(plan.price_kes)}</span>
@@ -436,7 +501,7 @@ export function CheckoutDialog({
                 <span
                   key={i}
                   className="h-1.5 w-1.5 rounded-full bg-cyan-400/60 animate-pulse"
-                  style={{ animationDelay: `${i * 0.3}s` }}
+                  style={{ animationDelay: `${i * 0.3}s`, backgroundColor: activeEventTheme ? loaderColor : undefined }}
                 />
               ))}
             </div>

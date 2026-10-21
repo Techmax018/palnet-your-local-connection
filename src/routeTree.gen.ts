@@ -20,6 +20,7 @@ import { Route as AdminLayoutPlansRouteImport } from './routes/admin/_layout/pla
 import { Route as AdminLayoutRoutersRouteImport } from './routes/admin/_layout/routers'
 import { Route as AdminLayoutSessionsRouteImport } from './routes/admin/_layout/sessions'
 import { Route as AdminLayoutSettingsRouteImport } from './routes/admin/_layout/settings'
+import { Route as AdminLayoutThemesRouteImport } from './routes/admin/_layout/themes'
 import { Route as AdminLayoutTransactionsRouteImport } from './routes/admin/_layout/transactions'
 import { Route as AdminLayoutVouchersRouteImport } from './routes/admin/_layout/vouchers'
 import { Route as ApiPaymentsCallbackRouteImport } from './routes/api/payments/callback'
@@ -85,6 +86,11 @@ const AdminLayoutSettingsRoute = AdminLayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
+const AdminLayoutThemesRoute = AdminLayoutThemesRouteImport.update({
+  id: '/themes',
+  path: '/themes',
+  getParentRoute: () => AdminLayoutRoute,
+} as any)
 const AdminLayoutTransactionsRoute = AdminLayoutTransactionsRouteImport.update({
   id: '/transactions',
   path: '/transactions',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/admin/routers': typeof AdminLayoutRoutersRoute
   '/admin/sessions': typeof AdminLayoutSessionsRoute
   '/admin/settings': typeof AdminLayoutSettingsRoute
+  '/admin/themes': typeof AdminLayoutThemesRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
   '/api/payments/callback': typeof ApiPaymentsCallbackRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/admin/routers': typeof AdminLayoutRoutersRoute
   '/admin/sessions': typeof AdminLayoutSessionsRoute
   '/admin/settings': typeof AdminLayoutSettingsRoute
+  '/admin/themes': typeof AdminLayoutThemesRoute
   '/admin/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/vouchers': typeof AdminLayoutVouchersRoute
   '/api/payments/callback': typeof ApiPaymentsCallbackRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/admin/_layout/routers': typeof AdminLayoutRoutersRoute
   '/admin/_layout/sessions': typeof AdminLayoutSessionsRoute
   '/admin/_layout/settings': typeof AdminLayoutSettingsRoute
+  '/admin/_layout/themes': typeof AdminLayoutThemesRoute
   '/admin/_layout/transactions': typeof AdminLayoutTransactionsRoute
   '/admin/_layout/vouchers': typeof AdminLayoutVouchersRoute
   '/api/payments/callback': typeof ApiPaymentsCallbackRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/admin/routers'
     | '/admin/sessions'
     | '/admin/settings'
+    | '/admin/themes'
     | '/admin/transactions'
     | '/admin/vouchers'
     | '/api/payments/callback'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/admin/routers'
     | '/admin/sessions'
     | '/admin/settings'
+    | '/admin/themes'
     | '/admin/transactions'
     | '/admin/vouchers'
     | '/api/payments/callback'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/routers'
     | '/admin/_layout/sessions'
     | '/admin/_layout/settings'
+    | '/admin/_layout/themes'
     | '/admin/_layout/transactions'
     | '/admin/_layout/vouchers'
     | '/api/payments/callback'
@@ -350,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutSettingsRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/themes': {
+      id: '/admin/_layout/themes'
+      path: '/themes'
+      fullPath: '/admin/themes'
+      preLoaderRoute: typeof AdminLayoutThemesRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/transactions': {
       id: '/admin/_layout/transactions'
       path: '/transactions'
@@ -415,6 +434,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutRoutersRoute: typeof AdminLayoutRoutersRoute
   AdminLayoutSessionsRoute: typeof AdminLayoutSessionsRoute
   AdminLayoutSettingsRoute: typeof AdminLayoutSettingsRoute
+  AdminLayoutThemesRoute: typeof AdminLayoutThemesRoute
   AdminLayoutTransactionsRoute: typeof AdminLayoutTransactionsRoute
   AdminLayoutVouchersRoute: typeof AdminLayoutVouchersRoute
   AdminLayoutIndexRoute: typeof AdminLayoutIndexRoute
@@ -426,6 +446,7 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutRoutersRoute: AdminLayoutRoutersRoute,
   AdminLayoutSessionsRoute: AdminLayoutSessionsRoute,
   AdminLayoutSettingsRoute: AdminLayoutSettingsRoute,
+  AdminLayoutThemesRoute: AdminLayoutThemesRoute,
   AdminLayoutTransactionsRoute: AdminLayoutTransactionsRoute,
   AdminLayoutVouchersRoute: AdminLayoutVouchersRoute,
   AdminLayoutIndexRoute: AdminLayoutIndexRoute,

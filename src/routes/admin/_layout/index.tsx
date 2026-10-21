@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Activity, ArrowUpRight, ArrowRightLeft, Check, Circle, ClipboardCopy,
-  CreditCard, Loader2, Pencil, Plus, Printer, RefreshCw, Router,
+  CreditCard, Loader2, Palette, Pencil, Plus, Printer, RefreshCw, Router,
   Flower2, PartyPopper, Search, Snowflake, Ticket, TrendingUp, Tv, Users, Wifi, WifiOff, Zap,
 } from "lucide-react";import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
@@ -522,9 +522,6 @@ function ReconnectLookup() {
 /* ─── Main Dashboard ─────────────────────────────────────────────────────── */
 const EVENT_THEME_OPTIONS = ["standard", "christmas", "new-year", "easter"] as const;
 type DashboardEventTheme = typeof EVENT_THEME_OPTIONS[number];
-const LOGO_TREATMENT_OPTIONS = ["standard", "santa-hat", "new-year", "easter"] as const;
-type DashboardLogoTreatment = typeof LOGO_TREATMENT_OPTIONS[number];
-
 const EVENT_THEMES: Record<Exclude<DashboardEventTheme, "standard">, {
   label: string;
   title: string;
@@ -575,9 +572,6 @@ function AdminDashboard() {
   const [txSearch, setTxSearch] = useState("");
   const savedEventTheme = settings?.["dashboard_event_theme"];
   const eventTheme = EVENT_THEME_OPTIONS.find((theme) => theme === savedEventTheme) ?? "standard";
-  const savedLogoTreatment = settings?.["dashboard_logo_treatment"];
-  const logoTreatment = LOGO_TREATMENT_OPTIONS.find((treatment) => treatment === savedLogoTreatment)
-    ?? (eventTheme === "christmas" ? "santa-hat" : "standard");
 
   const { data: sessions, isLoading: sessionsLoading } = useSessions(sessionSearch);
   const { data: transactions, isLoading: txLoading } = useTransactions(txSearch);
@@ -607,28 +601,6 @@ function AdminDashboard() {
   }
 
   const { start: periodStart, end: periodEnd } = periodRange(periodType, periodOffset);
-
-  async function saveDashboardSetting(key: string, value: string, successMessage: string) {
-    const { error } = await supabase
-      .from("network_settings")
-      .upsert({ key, value }, { onConflict: "key" });
-    if (error) {
-      toast.error("Could not save the dashboard appearance.");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["network-settings"] });
-    toast.success(successMessage);
-  }
-
-  async function handleEventThemeChange(value: string) {
-    if (!EVENT_THEME_OPTIONS.some((theme) => theme === value)) return;
-    await saveDashboardSetting("dashboard_event_theme", value as DashboardEventTheme, "Event theme saved.");
-  }
-
-  async function handleLogoTreatmentChange(value: string) {
-    if (!LOGO_TREATMENT_OPTIONS.some((treatment) => treatment === value)) return;
-    await saveDashboardSetting("dashboard_logo_treatment", value as DashboardLogoTreatment, "Logo treatment saved.");
-  }
 
   const activeEventTheme = eventTheme === "standard" ? null : EVENT_THEMES[eventTheme];
 
@@ -717,29 +689,13 @@ function AdminDashboard() {
             {settings?.["anti_tethering_enabled"] === "true" ? "on" : "off"} · live every 30s
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={eventTheme} onValueChange={handleEventThemeChange}>
-            <SelectTrigger aria-label="Dashboard event theme" className="h-9 w-[170px] border-slate-700 bg-slate-900 text-xs text-slate-200">
-              <SelectValue placeholder="Dashboard theme" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">Standard</SelectItem>
-              <SelectItem value="christmas">Christmas Snow</SelectItem>
-              <SelectItem value="new-year">New Year</SelectItem>
-              <SelectItem value="easter">Easter</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={logoTreatment} onValueChange={handleLogoTreatmentChange}>
-            <SelectTrigger aria-label="Dashboard logo treatment" className="h-9 w-[150px] border-slate-700 bg-slate-900 text-xs text-slate-200">
-              <SelectValue placeholder="Logo treatment" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">Standard logo</SelectItem>
-              <SelectItem value="santa-hat">Santa hat</SelectItem>
-              <SelectItem value="new-year">New Year</SelectItem>
-              <SelectItem value="easter">Easter</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/themes"
+            className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 px-3 text-xs text-slate-300 transition-colors hover:border-cyan-500/40 hover:bg-slate-800 hover:text-white"
+          >
+            <Palette className="size-3.5 text-cyan-400" /> Themes
+          </Link>
           <button
             onClick={() => refetch()}
             className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
