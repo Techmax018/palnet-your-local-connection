@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normalizePhone } from "./palnet";
+import { normalizePhone, planMinutes } from "./palnet";
 
 const deviceSchema = {
   macAddress: z.string().max(32).optional().nullable(),
@@ -98,11 +98,15 @@ export const redeemGuestVoucher = createServerFn({ method: "POST" })
 
     const { data: voucher } = await supabaseAdmin
       .from("vouchers")
-      .select("id, plan_id, status")
+      .select("id, plan_id, status, expires_at")
       .eq("code", code)
       .maybeSingle();
 
     if (!voucher) return { ok: false as const, message: "That voucher code was not found" };
+    if (voucher.status === "unused" && voucher.expires_at && new Date(voucher.expires_at as string).getTime() <= Date.now()) {
+      await supabaseAdmin.from("vouchers").update({ status: "expired" }).eq("id", voucher.id).eq("status", "unused");
+      return { ok: false as const, message: "This voucher has expired. Please request a new code." };
+    }
     if (voucher.status !== "unused") {
       return { ok: false as const, message: "This voucher has already been used" };
     }
@@ -121,7 +125,7 @@ export const redeemGuestVoucher = createServerFn({ method: "POST" })
       .update({
         status: "active",
         activated_at: new Date().toISOString(),
-        expires_at: activation.endTime,
+        subscription_id: activation.subscriptionId,
       })
       .eq("id", voucher.id);
 
@@ -360,6 +364,16 @@ export const generateVouchers = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
 
+    const { data: plan, error: planError } = await context.supabase
+      .from("internet_plans")
+      .select("duration_type, duration_value")
+      .eq("id", data.planId)
+      .maybeSingle();
+    if (planError || !plan) {
+      return { ok: false as const, message: "The selected plan could not be found", codes: [] as string[] };
+    }
+    const expiresAt = new Date(Date.now() + planMinutes(plan) * 60_000).toISOString();
+
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const codes = new Set<string>();
     while (codes.size < data.quantity) {
@@ -371,7 +385,7 @@ export const generateVouchers = createServerFn({ method: "POST" })
       codes.add(code);
     }
 
-    const rows = [...codes].map((code) => ({ code, plan_id: data.planId, status: "unused" }));
+    const rows = [...codes].map((code) => ({ code, plan_id: data.planId, status: "unused", expires_at: expiresAt }));
     const { data: inserted, error } = await context.supabase
       .from("vouchers")
       .insert(rows)
@@ -456,11 +470,15 @@ export const redeemVoucher = createServerFn({ method: "POST" })
 
     const { data: voucher } = await supabaseAdmin
       .from("vouchers")
-      .select("id, plan_id, status")
+      .select("id, plan_id, status, expires_at")
       .eq("code", code)
       .maybeSingle();
 
     if (!voucher) return { ok: false as const, message: "That voucher code was not found" };
+    if (voucher.status === "unused" && voucher.expires_at && new Date(voucher.expires_at as string).getTime() <= Date.now()) {
+      await supabaseAdmin.from("vouchers").update({ status: "expired" }).eq("id", voucher.id).eq("status", "unused");
+      return { ok: false as const, message: "This voucher has expired. Please request a new code." };
+    }
     if (voucher.status !== "unused") {
       return { ok: false as const, message: "This voucher has already been used" };
     }
@@ -473,7 +491,11 @@ export const redeemVoucher = createServerFn({ method: "POST" })
 
     await supabaseAdmin
       .from("vouchers")
-      .update({ status: "active", activated_at: new Date().toISOString(), expires_at: activation.endTime })
+      .update({
+        status: "active",
+        activated_at: new Date().toISOString(),
+        subscription_id: activation.subscriptionId,
+      })
       .eq("id", voucher.id);
 
     const { data: plan } = await supabaseAdmin
@@ -564,38 +586,73 @@ export const transferSession = createServerFn({ method: "POST" })
     // Try transactions table first (M-Pesa reference)
     let subscriptionId: string | null = null;
 
-    const { data: tx } = await supabaseAdmin
+    let { data: tx } = await supabaseAdmin
       .from("transactions")
       .select("id, plan_id, mac_address, phone_number")
       .eq("transaction_reference", code)
       .eq("status", "completed")
       .maybeSingle();
 
-    if (tx && (tx.mac_address || tx.phone_number)) {
-      // Only the session bought by this payment (same device or phone and plan).
-      let q = supabaseAdmin
-        .from("user_subscriptions")
-        .select("id")
-        .eq("plan_id", tx.plan_id as string);
-      q = tx.mac_address ? q.eq("mac_address", tx.mac_address) : q.eq("phone_number", tx.phone_number as string);
-      const { data: sub } = await q
-        .eq("status", "active")
-        .gt("end_time", new Date().toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
+    if (!tx) {
+      const receiptLookup = await supabaseAdmin
+        .from("transactions")
+        .select("id, plan_id, mac_address, phone_number")
+        .eq("mpesa_receipt_number", code)
+        .eq("payment_method", "mpesa")
+        .eq("status", "completed")
         .maybeSingle();
+      tx = receiptLookup.data;
+    }
+
+    if (tx) {
+      let sub: { id: string } | null = null;
+      if (tx.mac_address) {
+        const { data } = await supabaseAdmin
+          .from("user_subscriptions")
+          .select("id")
+          .eq("plan_id", tx.plan_id as string)
+          .eq("mac_address", tx.mac_address as string)
+          .eq("status", "active")
+          .gt("end_time", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        sub = data;
+      }
+      if (!sub && tx.phone_number) {
+        const { data } = await supabaseAdmin
+          .from("user_subscriptions")
+          .select("id")
+          .eq("plan_id", tx.plan_id as string)
+          .eq("phone_number", tx.phone_number as string)
+          .eq("status", "active")
+          .gt("end_time", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        sub = data;
+      }
       subscriptionId = sub?.id ?? null;
     }
 
-    // Try vouchers table if no tx match
+    // Vouchers link directly to the subscription created at redemption.
     if (!subscriptionId) {
       const { data: voucher } = await supabaseAdmin
         .from("vouchers")
-        .select("id, subscription_id")
+        .select("id, subscription_id, status, expires_at")
         .eq("code", code)
-        .in("status", ["active", "used"])
         .maybeSingle();
-      if (voucher?.subscription_id) {
+      if (voucher?.status === "unused") {
+        if (voucher.expires_at && new Date(voucher.expires_at as string).getTime() <= Date.now()) {
+          await supabaseAdmin.from("vouchers").update({ status: "expired" }).eq("id", voucher.id).eq("status", "unused");
+          return { ok: false as const, message: "This voucher has expired. Please request a new code." };
+        }
+        return { ok: false as const, message: "This voucher has not been redeemed yet. Use the Scratch Card option to activate it first." };
+      }
+      if (voucher?.status === "expired") {
+        return { ok: false as const, message: "This voucher has expired. Please request a new code." };
+      }
+      if (voucher?.status === "active" && voucher.subscription_id) {
         subscriptionId = voucher.subscription_id as string;
       }
     }
