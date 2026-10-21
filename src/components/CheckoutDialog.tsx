@@ -256,7 +256,7 @@ export function CheckoutDialog({
                   boxShadow: "0 0 20px rgba(0,243,255,0.12)",
                 }}
               >
-                <img src="/__l5e/assets-v1/d5f17890-e832-47f2-818f-8d165e2da0fb/palnet-logo.jpg" alt="PalNet" className="h-12 w-12 object-contain" />
+                <img src="/favicon.png" alt="PalNet" className="h-12 w-12 object-contain" />
               </div>
 
             <div>
