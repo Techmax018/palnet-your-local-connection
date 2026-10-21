@@ -3,9 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  ArrowRightLeft, Cable, ChevronDown, Clock, Gauge, Loader2,
-  Plus, ShieldCheck, Smartphone, Ticket, Tv, Wifi, Zap,
+  ArrowRightLeft, Cable, ChevronDown, Clock, Flower2, Gauge, Loader2,
+  PartyPopper, Plus, ShieldCheck, Smartphone, Snowflake, Ticket, Tv, Wifi, Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { PalNetHeader } from "@/components/PalNetHeader";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useActiveSession, useSession, usePlans, getDeviceMac, getDeviceIp } from "@/hooks/usePalNet";
+import { useNetworkSettings } from "@/hooks/useAdminAlerts";
 import { supabase } from "@/integrations/supabase/client";
 import { submitInstallationRequest, redeemGuestVoucher } from "@/lib/palnet.functions";
 import { formatKes, formatCountdown, planDurationLabel, type Plan } from "@/lib/palnet";
@@ -188,41 +190,50 @@ function VoucherBar() {
 /* ─── Plan cards ───────────────────────────────────────────────────────────── */
 function HomePlanCard({ plan, badge, onSelect }: { plan: Plan; badge?: string | undefined; onSelect: (p: Plan) => void }) {
   return (
-    <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
+    <button type="button" onClick={() => onSelect(plan)} className="surface-panel relative flex min-h-[170px] flex-col justify-between overflow-hidden p-3 text-left text-inherit transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
-      {badge && (
-        <span className="mb-1.5 inline-flex w-fit items-center rounded-full border border-accent/30 bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
-          {badge}
-        </span>
-      )}
-      <p className="font-display text-lg font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
-      <p className="mt-1 text-xs font-semibold text-foreground leading-snug">{plan.name}</p>
-      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
-      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
+      {badge && <span className="absolute right-2 top-2 rounded-full border border-accent/30 bg-accent/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-accent">{badge}</span>}
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-display text-[1.05rem] font-black leading-none text-gradient-brand">{formatKes(plan.price_kes)}</p>
+        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground"><Gauge className="size-3 text-accent" />{plan.speed_limit_mbps} Mbps</span>
+      </div>
+      <div>
+        <p className="text-xs font-semibold leading-snug text-foreground">{plan.name}</p>
+        <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
+      </div>
     </button>
   );
 }
 
 function HotspotCard({ plan, onSelect }: { plan: Plan; onSelect: (p: Plan) => void }) {
   return (
-    <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
+    <button onClick={() => onSelect(plan)} className="surface-panel relative flex flex-col gap-3 overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
-      <p className="font-display text-xl font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
-      <p className="mt-1 text-xs font-semibold text-foreground line-clamp-2 leading-snug">{plan.name}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{planDurationLabel(plan)}</p>
-      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
+      <div>
+        <p className="font-display text-[1.2rem] font-black leading-none text-gradient-brand">{formatKes(plan.price_kes)}</p>
+        <p className="mt-1.5 text-xs font-semibold leading-snug text-foreground line-clamp-2">{plan.name}</p>
+      </div>
+      <div>
+        <p className="text-[11px] text-muted-foreground">{planDurationLabel(plan)}</p>
+        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
+      </div>
     </button>
   );
 }
 
 function TvPlanCard({ plan, onSelect }: { plan: Plan; onSelect: (p: Plan) => void }) {
   return (
-    <button onClick={() => onSelect(plan)} className="surface-panel relative overflow-hidden p-3 text-left transition-all hover:glow-neon active:scale-95">
+    <button type="button" onClick={() => onSelect(plan)} className="surface-panel relative flex min-h-[170px] flex-col justify-between overflow-hidden p-3 text-left text-inherit transition-all hover:glow-neon active:scale-95">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-brand" />
-      <p className="font-display text-xl font-black text-gradient-brand leading-none">{formatKes(plan.price_kes)}</p>
-      <p className="mt-1 text-xs font-semibold text-foreground">{plan.name}</p>
-      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
-      <div className="mt-1.5 flex items-center gap-1 text-xs text-accent"><Tv className="size-3" />Smart TV</div>
+      <div>
+        <p className="font-display text-[1.2rem] font-black leading-none text-gradient-brand">{formatKes(plan.price_kes)}</p>
+        <p className="mt-1.5 text-xs font-semibold text-foreground">{plan.name}</p>
+      </div>
+      <div>
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock className="size-3" />{planDurationLabel(plan)}</p>
+        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-accent"><Gauge className="size-3" />{plan.speed_limit_mbps} Mbps</div>
+        <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><Tv className="size-3" />Smart TV</div>
+      </div>
     </button>
   );
 }
@@ -235,9 +246,48 @@ function SkeletonGrid({ cols, rows = 2 }: { cols: number; rows?: number }) {
   );
 }
 
+const PORTAL_EVENT_THEMES = {
+  christmas: {
+    label: "Christmas Snow",
+    title: "Season's greetings from PalNet",
+    message: "Stay connected and share the joy this festive season.",
+    icon: Snowflake,
+    bannerClass: "border-sky-300/20 bg-gradient-to-r from-sky-500/15 via-cyan-300/5 to-slate-900/70",
+    accentClass: "text-sky-200",
+    background: "radial-gradient(circle at 92% 4%, rgba(56,189,248,0.15), transparent 28rem), #0b0f19",
+  },
+  "new-year": {
+    label: "New Year",
+    title: "A brighter year starts connected",
+    message: "Welcome to a new year of reliable PalNet connections.",
+    icon: PartyPopper,
+    bannerClass: "border-amber-300/20 bg-gradient-to-r from-amber-500/15 via-yellow-300/5 to-slate-900/70",
+    accentClass: "text-amber-200",
+    background: "radial-gradient(circle at 92% 4%, rgba(251,191,36,0.13), transparent 28rem), #0b0f19",
+  },
+  easter: {
+    label: "Easter",
+    title: "Warm Easter wishes from PalNet",
+    message: "Enjoy the season and stay close to what matters.",
+    icon: Flower2,
+    bannerClass: "border-emerald-300/20 bg-gradient-to-r from-emerald-500/15 via-lime-300/5 to-slate-900/70",
+    accentClass: "text-emerald-200",
+    background: "radial-gradient(circle at 92% 4%, rgba(74,222,128,0.13), transparent 28rem), #0b0f19",
+  },
+} satisfies Record<string, {
+  label: string;
+  title: string;
+  message: string;
+  icon: LucideIcon;
+  bannerClass: string;
+  accentClass: string;
+  background: string;
+}>;
+
 /* ─── Main portal ──────────────────────────────────────────────────────────── */
 function CaptivePortal() {
   const { data: plans, isLoading } = usePlans();
+  const { data: settings } = useNetworkSettings();
   const [selected, setSelected] = useState<Plan | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
@@ -265,6 +315,10 @@ function CaptivePortal() {
   const homePlans = byCategory("home");
   const hotspotPlans = byCategory("hotspot");
   const tvPlans = byCategory("tv");
+  const eventTheme = settings?.["dashboard_event_theme"];
+  const activePortalTheme = eventTheme && eventTheme in PORTAL_EVENT_THEMES
+    ? PORTAL_EVENT_THEMES[eventTheme as keyof typeof PORTAL_EVENT_THEMES]
+    : null;
 
   const homeBadge = (plan: Plan) => {
     const sorted = [...homePlans].sort((a, b) => a.price_kes - b.price_kes);
@@ -273,9 +327,30 @@ function CaptivePortal() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#0b0f19" }}>
+    <div className="min-h-screen" style={{ background: activePortalTheme?.background ?? "#0b0f19" }}>
       {/* Simple top header — no hamburger, no sidebar */}
       <PalNetHeader online />
+
+      {activePortalTheme && (() => {
+        const ThemeIcon = activePortalTheme.icon;
+        return (
+          <div className={`relative isolate overflow-hidden border-b px-4 py-3 ${activePortalTheme.bannerClass}`}>
+            <ThemeIcon className={`absolute -right-2 -top-4 size-24 opacity-[0.12] ${activePortalTheme.accentClass}`} aria-hidden="true" />
+            <div className="relative mx-auto flex max-w-2xl items-center gap-3">
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg bg-black/20 ${activePortalTheme.accentClass}`}>
+                <ThemeIcon className="size-4.5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${activePortalTheme.accentClass}`}>
+                  {activePortalTheme.label}
+                </p>
+                <p className="text-sm font-bold text-white">{activePortalTheme.title}</p>
+                <p className="text-xs text-slate-300">{activePortalTheme.message}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Promo banner */}
       <div className="border-b border-accent/20 bg-accent/5 px-4 py-2">
@@ -328,7 +403,7 @@ function CaptivePortal() {
               </div>
             )}
             {isLoading ? <SkeletonGrid cols={3} /> : (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {hotspotPlans.map(p => <HotspotCard key={p.id} plan={p} onSelect={openCheckout} />)}
               </div>
             )}
@@ -338,7 +413,7 @@ function CaptivePortal() {
           <TabsContent value="home" className="pt-3 space-y-3">
             <p className="text-xs text-muted-foreground">Dedicated high-speed cable direct to your indoor Wi-Fi router.</p>
             {isLoading ? <SkeletonGrid cols={2} /> : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {homePlans.map(p => <HomePlanCard key={p.id} plan={p} badge={homeBadge(p)} onSelect={openCheckout} />)}
               </div>
             )}
@@ -352,7 +427,7 @@ function CaptivePortal() {
             <p className="text-xs text-muted-foreground">High-priority streaming passes for Smart TVs and Android Boxes.</p>
             <TvGuide />
             {isLoading ? <SkeletonGrid cols={2} /> : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {tvPlans.map(p => <TvPlanCard key={p.id} plan={p} onSelect={openCheckout} />)}
               </div>
             )}

@@ -5,8 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Activity, ArrowUpRight, ArrowRightLeft, Check, Circle, ClipboardCopy,
   CreditCard, Loader2, Pencil, Plus, Printer, RefreshCw, Router,
-  Search, Ticket, TrendingUp, Tv, Users, Wifi, WifiOff, Zap,
+  Flower2, PartyPopper, Search, Snowflake, Ticket, TrendingUp, Tv, Users, Wifi, WifiOff, Zap,
 } from "lucide-react";import { toast } from "sonner";
+import type { LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -519,6 +520,45 @@ function ReconnectLookup() {
 }
 
 /* ─── Main Dashboard ─────────────────────────────────────────────────────── */
+const EVENT_THEME_OPTIONS = ["standard", "christmas", "new-year", "easter"] as const;
+type DashboardEventTheme = typeof EVENT_THEME_OPTIONS[number];
+const LOGO_TREATMENT_OPTIONS = ["standard", "santa-hat", "new-year", "easter"] as const;
+type DashboardLogoTreatment = typeof LOGO_TREATMENT_OPTIONS[number];
+
+const EVENT_THEMES: Record<Exclude<DashboardEventTheme, "standard">, {
+  label: string;
+  title: string;
+  message: string;
+  bannerClass: string;
+  accentClass: string;
+  icon: LucideIcon;
+}> = {
+  christmas: {
+    label: "Christmas Snow",
+    title: "Season's greetings",
+    message: "Wishing your team and customers a joyful festive season.",
+    bannerClass: "border-sky-300/20 bg-gradient-to-r from-sky-500/15 via-cyan-300/5 to-slate-800/50",
+    accentClass: "text-sky-200",
+    icon: Snowflake,
+  },
+  "new-year": {
+    label: "New Year",
+    title: "A fresh year of better connections",
+    message: "Here's to a bright year ahead for the PalNet network.",
+    bannerClass: "border-amber-300/20 bg-gradient-to-r from-amber-500/15 via-yellow-300/5 to-slate-800/50",
+    accentClass: "text-amber-200",
+    icon: PartyPopper,
+  },
+  easter: {
+    label: "Easter",
+    title: "Seasonal greetings",
+    message: "Wishing your team and customers a peaceful, joyful Easter.",
+    bannerClass: "border-emerald-300/20 bg-gradient-to-r from-emerald-500/15 via-lime-300/5 to-slate-800/50",
+    accentClass: "text-emerald-200",
+    icon: Flower2,
+  },
+};
+
 function AdminDashboard() {
   const { data: stats, isLoading: statsLoading, refetch, isFetching } = useAdminStats();
   const { data: routers, isLoading: routersLoading } = useRouters();
@@ -533,142 +573,100 @@ function AdminDashboard() {
   const [routerModal, setRouterModal] = useState<{ open: boolean; editing: RouterRow | null }>({ open: false, editing: null });
   const [sessionSearch, setSessionSearch] = useState("");
   const [txSearch, setTxSearch] = useState("");
+  const savedEventTheme = settings?.["dashboard_event_theme"];
+  const eventTheme = EVENT_THEME_OPTIONS.find((theme) => theme === savedEventTheme) ?? "standard";
+  const savedLogoTreatment = settings?.["dashboard_logo_treatment"];
+  const logoTreatment = LOGO_TREATMENT_OPTIONS.find((treatment) => treatment === savedLogoTreatment)
+    ?? (eventTheme === "christmas" ? "santa-hat" : "standard");
 
   const { data: sessions, isLoading: sessionsLoading } = useSessions(sessionSearch);
   const { data: transactions, isLoading: txLoading } = useTransactions(txSearch);
   const now = Date.now();
 
+  // Revenue period state
   const [periodType, setPeriodType] = useState<"week" | "month">("week");
+  const [periodOffset, setPeriodOffset] = useState(0); // 0 = current, -1 previous, +1 next
 
-  const { data: revenuePeriod, isLoading: periodLoading } = useQuery({
-    queryKey: ["admin-revenue-period", periodType],
+  function periodRange(type: "week" | "month", offset: number) {
+    const d = new Date();
+    if (type === "week") {
+      // compute start of the week (Monday) then shift by offset weeks
+      const day = d.getDay();
+      const isoDay = (day + 6) % 7; // Monday=0
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - isoDay + offset * 7);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start.getTime() + 7 * 86_400_000);
+      return { start, end };
+    }
+    // month
+    const start = new Date(d.getFullYear(), d.getMonth() + offset, 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(d.getFullYear(), d.getMonth() + offset + 1, 1);
+    end.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+
+  const { start: periodStart, end: periodEnd } = periodRange(periodType, periodOffset);
+
+  async function saveDashboardSetting(key: string, value: string, successMessage: string) {
+    const { error } = await supabase
+      .from("network_settings")
+      .upsert({ key, value }, { onConflict: "key" });
+    if (error) {
+      toast.error("Could not save the dashboard appearance.");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["network-settings"] });
+    toast.success(successMessage);
+  }
+
+  async function handleEventThemeChange(value: string) {
+    if (!EVENT_THEME_OPTIONS.some((theme) => theme === value)) return;
+    await saveDashboardSetting("dashboard_event_theme", value as DashboardEventTheme, "Event theme saved.");
+  }
+
+  async function handleLogoTreatmentChange(value: string) {
+    if (!LOGO_TREATMENT_OPTIONS.some((treatment) => treatment === value)) return;
+    await saveDashboardSetting("dashboard_logo_treatment", value as DashboardLogoTreatment, "Logo treatment saved.");
+  }
+
+  const activeEventTheme = eventTheme === "standard" ? null : EVENT_THEMES[eventTheme];
+
+  // Fetch aggregated revenue for the selected period
+  const { data: periodData, isLoading: periodLoading } = useQuery({
+    queryKey: ["admin-revenue-period", periodType, periodStart.toISOString(), periodEnd.toISOString()],
     queryFn: async () => {
-      const now = new Date();
-
-      if (periodType === "week") {
-        const days = 7;
-        const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - (days - 1));
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-
-        const { data } = await supabase
-          .from("transactions")
-          .select("amount_kes, created_at, status, plan_id, internet_plans(name)")
-          .eq("status", "completed")
-          .gte("created_at", start.toISOString())
-          .lte("created_at", end.toISOString());
-
-        const completed = (data ?? []) as Array<{
-          amount_kes: number | string;
-          created_at: string;
-          plan_id: string | null;
-          internet_plans?: { name: string } | null;
-        }>;
-
-        const series = Array.from({ length: days }, (_, index) => {
-          const day = new Date(start);
-          day.setDate(start.getDate() + index);
-          const dayStart = new Date(day);
-          dayStart.setHours(0, 0, 0, 0);
-          const dayEnd = new Date(day);
-          dayEnd.setHours(23, 59, 59, 999);
-
-          const revenue = completed
-            .filter((t) => {
-              const txDate = new Date(t.created_at);
-              return txDate >= dayStart && txDate <= dayEnd;
-            })
-            .reduce((sum, t) => sum + Number(t.amount_kes), 0);
-
-          return {
-            label: day.toLocaleDateString("en-KE", { weekday: "short" }),
-            revenue,
-            dateKey: day.toISOString().slice(0, 10),
-          };
-        });
-
-        const totalRevenue = series.reduce((sum, item) => sum + item.revenue, 0);
-        const packageMap = new Map<string, { name: string; count: number; revenue: number }>();
-        completed.forEach((t) => {
-          const name = t.internet_plans?.name ?? `Plan ${t.plan_id ?? "Unknown"}`;
-          const existing = packageMap.get(name) ?? { name, count: 0, revenue: 0 };
-          existing.count += 1;
-          existing.revenue += Number(t.amount_kes);
-          packageMap.set(name, existing);
-        });
-
-        const totalVolume = Array.from(packageMap.values()).reduce((sum, item) => sum + item.count, 0);
-        const packageBreakdown = Array.from(packageMap.values())
-          .sort((a, b) => b.revenue - a.revenue)
-          .map((item) => ({
-            ...item,
-            share: totalVolume > 0 ? (item.count / totalVolume) * 100 : 0,
-          }));
-
-        return { totalRevenue, series, packageBreakdown };
-      }
-
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       const { data } = await supabase
         .from("transactions")
-        .select("amount_kes, created_at, status, plan_id, internet_plans(name)")
-        .eq("status", "completed")
-        .gte("created_at", monthStart.toISOString())
-        .lte("created_at", monthEnd.toISOString());
-
-      const completed = (data ?? []) as Array<{
-        amount_kes: number | string;
-        created_at: string;
-        plan_id: string | null;
-        internet_plans?: { name: string } | null;
-      }>;
-
-      const series: { label: string; revenue: number; dateKey: string }[] = [];
-      for (let index = 0; index < 4; index += 1) {
-        const start = new Date(monthStart);
-        start.setDate(monthStart.getDate() + index * 7);
-
-        const end = index === 3 ? new Date(monthEnd) : new Date(start);
-        end.setDate(start.getDate() + 6);
-        if (end > monthEnd) end.setTime(monthEnd.getTime());
-
-        const revenue = completed
-          .filter((t) => {
-            const txDate = new Date(t.created_at);
-            return txDate >= start && txDate <= end;
-          })
-          .reduce((sum, t) => sum + Number(t.amount_kes), 0);
-
-        const label = `${monthStart.toLocaleDateString("en-KE", { month: "short" })} wk${index + 1}`;
-        series.push({
-          label,
-          revenue,
-          dateKey: `${monthStart.toISOString().slice(0, 7)}-wk${index + 1}`,
-        });
+        .select("amount_kes, created_at, status")
+        .gte("created_at", periodStart.toISOString())
+        .lt("created_at", periodEnd.toISOString());
+      const completed = (data ?? []).filter((t: any) => t.status === "completed");
+      if (periodType === "week") {
+        // group by day
+        const days: { label: string; revenue: number }[] = [];
+        for (let i = 0; i < 7; i++) {
+          const s = new Date(periodStart.getTime() + i * 86_400_000);
+          const e = new Date(s.getTime() + 86_400_000);
+          const sum = completed
+            .filter((t: any) => t.created_at >= s.toISOString() && t.created_at < e.toISOString())
+            .reduce((s2: number, t: any) => s2 + Number(t.amount_kes), 0);
+          days.push({ label: s.toLocaleDateString("en-KE", { weekday: "short" }), revenue: sum });
+        }
+        return { total: days.reduce((s, d) => s + d.revenue, 0), series: days };
       }
-
-      const totalRevenue = series.reduce((sum, item) => sum + item.revenue, 0);
-      const packageMap = new Map<string, { name: string; count: number; revenue: number }>();
-      completed.forEach((t) => {
-        const name = t.internet_plans?.name ?? `Plan ${t.plan_id ?? "Unknown"}`;
-        const existing = packageMap.get(name) ?? { name, count: 0, revenue: 0 };
-        existing.count += 1;
-        existing.revenue += Number(t.amount_kes);
-        packageMap.set(name, existing);
-      });
-
-      const totalVolume = Array.from(packageMap.values()).reduce((sum, item) => sum + item.count, 0);
-      const packageBreakdown = Array.from(packageMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .map((item) => ({
-          ...item,
-          share: totalVolume > 0 ? (item.count / totalVolume) * 100 : 0,
-        }));
-
-      return { totalRevenue, series, packageBreakdown };
+      // month -> group by week
+      const weeks: { label: string; revenue: number }[] = [];
+      let cursor = new Date(periodStart);
+      while (cursor < periodEnd) {
+        const next = new Date(cursor.getTime() + 7 * 86_400_000);
+        const sum = completed
+          .filter((t: any) => t.created_at >= cursor.toISOString() && t.created_at < next.toISOString())
+          .reduce((s2: number, t: any) => s2 + Number(t.amount_kes), 0);
+        weeks.push({ label: `${cursor.toLocaleDateString("en-KE", { month: "short" })} ${cursor.getDate()}`, revenue: sum });
+        cursor = next;
+      }
+      return { total: weeks.reduce((s, d) => s + d.revenue, 0), series: weeks };
     },
   });
 
@@ -708,7 +706,7 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-wide text-white">
             Network Overview & Control Center
@@ -719,14 +717,59 @@ function AdminDashboard() {
             {settings?.["anti_tethering_enabled"] === "true" ? "on" : "off"} · live every 30s
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-        >
-          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin text-cyan-400" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={eventTheme} onValueChange={handleEventThemeChange}>
+            <SelectTrigger aria-label="Dashboard event theme" className="h-9 w-[170px] border-slate-700 bg-slate-900 text-xs text-slate-200">
+              <SelectValue placeholder="Dashboard theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">Standard</SelectItem>
+              <SelectItem value="christmas">Christmas Snow</SelectItem>
+              <SelectItem value="new-year">New Year</SelectItem>
+              <SelectItem value="easter">Easter</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={logoTreatment} onValueChange={handleLogoTreatmentChange}>
+            <SelectTrigger aria-label="Dashboard logo treatment" className="h-9 w-[150px] border-slate-700 bg-slate-900 text-xs text-slate-200">
+              <SelectValue placeholder="Logo treatment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">Standard logo</SelectItem>
+              <SelectItem value="santa-hat">Santa hat</SelectItem>
+              <SelectItem value="new-year">New Year</SelectItem>
+              <SelectItem value="easter">Easter</SelectItem>
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          >
+            <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin text-cyan-400" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {activeEventTheme && (() => {
+        const ThemeIcon = activeEventTheme.icon;
+        return (
+          <div className={`relative isolate overflow-hidden rounded-xl border px-4 py-3 ${activeEventTheme.bannerClass}`}>
+            <ThemeIcon className={`absolute -right-2 -top-4 size-24 opacity-[0.12] ${activeEventTheme.accentClass}`} aria-hidden="true" />
+            <div className="relative flex items-center gap-3">
+              <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg bg-black/20 ${activeEventTheme.accentClass}`}>
+                <ThemeIcon className="size-5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${activeEventTheme.accentClass}`}>
+                  {activeEventTheme.label}
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-white">{activeEventTheme.title}</p>
+                <p className="text-xs text-slate-300">{activeEventTheme.message}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── KPI Bar ── */}
       {statsLoading ? (
@@ -768,130 +811,50 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Revenue trend + package usage ── */}
-      {!statsLoading && stats && (
-        <div className="grid gap-3 xl:grid-cols-[1.8fr_1fr]">
-          <div className="admin-card p-4">
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {periodType === "week" ? "Revenue — last 7 days" : "Revenue — last 30 days"}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {periodLoading ? "Loading chart…" : `KES ${revenuePeriod?.totalRevenue.toLocaleString() ?? "0"} collected`}
-                </p>
-              </div>
-              <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900/60 p-1">
-                {(["week", "month"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setPeriodType(tab)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                      periodType === tab
-                        ? "bg-cyan-500/15 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.15)]"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {tab === "week" ? "Weekly (7 Days)" : "Monthly (30 Days)"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {periodLoading ? (
-              <div className="flex h-44 items-end gap-2">
-                {[...Array(periodType === "week" ? 7 : 10)].map((_, i) => (
-                  <div key={i} className="flex-1 rounded-t-md bg-slate-800/80" style={{ height: `${30 + ((i * 17) % 75)}px` }} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-48 items-end gap-2 overflow-x-auto pb-1">
-                {(revenuePeriod?.series ?? []).map((d) => {
-                  const max = Math.max(...(revenuePeriod?.series ?? []).map((item) => item.revenue), 1);
-                  const barPx = Math.max(Math.round((d.revenue / max) * 142), 6);
-                  return (
-                    <div key={`${d.dateKey}-${d.label}`} className="group flex min-w-[28px] flex-1 flex-col items-center gap-1.5">
-                      <span className="text-[10px] tabular-nums text-cyan-400/80">
-                        {d.revenue > 0 ? d.revenue.toLocaleString() : ""}
-                      </span>
-                      <div
-                        className="w-full rounded-t-md transition-all"
-                        style={{
-                          height: `${barPx}px`,
-                          background:
-                            d.revenue > 0
-                              ? "linear-gradient(180deg,#00f3ff,#0891b2)"
-                              : "rgba(100,116,139,0.25)",
-                          boxShadow: d.revenue > 0 ? "0 0 14px rgba(0,243,255,0.22)" : "none",
-                        }}
-                        title={`${d.dateKey}: KES ${d.revenue.toLocaleString()}`}
-                      />
-                      <span className="text-[10px] text-slate-500">{d.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="admin-card p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-white">Package Usage & Popularity</p>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Sales</span>
-            </div>
-
-            {periodLoading ? (
-              <div className="space-y-3">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-2.5 w-32 rounded-full bg-slate-800" />
-                    <div className="h-2.5 w-full rounded-full bg-slate-800" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(revenuePeriod?.packageBreakdown ?? []).slice(0, 5).map((item) => {
-                  const maxRevenue = Math.max(...(revenuePeriod?.packageBreakdown ?? []).map((row) => row.revenue), 1);
-                  const width = Math.max((item.revenue / maxRevenue) * 100, 8);
-                  return (
-                    <div key={item.name} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="truncate text-xs font-medium text-slate-200">{item.name}</p>
-                        <span className="text-[10px] text-slate-400">{item.share.toFixed(1)}%</span>
-                      </div>
-                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800/80">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-500"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-500">
-                        <span>{item.count} sold</span>
-                        <span>KES {item.revenue.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {!(revenuePeriod?.packageBreakdown ?? []).length && (
-                  <p className="text-xs text-slate-500">No completed package sales in this period.</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
+      {/* ── 7-day revenue trend + operations strip ── */}
       {!statsLoading && stats && (
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="admin-card p-4 lg:col-span-2">
             <div className="mb-3 flex items-end justify-between">
               <div>
-                <p className="text-sm font-bold text-white">Operations</p>
-                <p className="text-xs text-slate-500">Service health overview</p>
+                <p className="text-sm font-bold text-white">Revenue — last 7 days</p>
+                <p className="text-xs text-slate-500">
+                  KES {stats.weekRevenue.toLocaleString()} collected · average sale KES{" "}
+                  {stats.avgSaleToday.toLocaleString()}
+                </p>
               </div>
-              <span className="text-xs text-slate-600">Live</span>
+              <span className="text-xs text-slate-600">Completed M-Pesa only</span>
             </div>
+            <div className="flex items-end gap-2">
+              {stats.trend.map((d) => {
+                const max = Math.max(...stats.trend.map((t) => t.revenue), 1);
+                const barPx = Math.max(Math.round((d.revenue / max) * 104), 4);
+                return (
+                  <div key={d.date} className="group flex flex-1 flex-col items-center gap-1.5">
+                    <span className="text-xs tabular-nums text-cyan-400/80">
+                      {d.revenue > 0 ? d.revenue.toLocaleString() : ""}
+                    </span>
+                    <div
+                      className="w-full rounded-t-md transition-all"
+                      style={{
+                        height: `${barPx}px`,
+                        background:
+                          d.revenue > 0
+                            ? "linear-gradient(180deg,#00f3ff,#0891b2)"
+                            : "rgba(100,116,139,0.25)",
+                        boxShadow: d.revenue > 0 ? "0 0 10px rgba(0,243,255,0.25)" : "none",
+                      }}
+                      title={`${d.date}: KES ${d.revenue.toLocaleString()} · ${d.sales} sale(s)`}
+                    />
+                    <span className="text-xs text-slate-500">{d.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="admin-card p-4">
+            <p className="mb-3 text-sm font-bold text-white">Operations</p>
             <div className="space-y-2">
               {[
                 {
@@ -929,26 +892,6 @@ function AdminDashboard() {
                   <span className={`text-sm font-bold tabular-nums ${row.tone}`}>{row.value}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="admin-card p-4">
-            <p className="mb-3 text-sm font-bold text-white">Quick Summary</p>
-            <div className="space-y-2">
-              <div className="rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Week revenue</p>
-                <p className="mt-1 text-lg font-bold text-emerald-400">KES {stats.weekRevenue.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Avg sale</p>
-                <p className="mt-1 text-lg font-bold text-cyan-400">KES {stats.avgSaleToday.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Revenue vs yesterday</p>
-                <p className={`mt-1 text-lg font-bold ${stats.revenueChangePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {(stats.revenueChangePct ?? 0) >= 0 ? "+" : ""}{stats.revenueChangePct ?? 0}%
-                </p>
-              </div>
             </div>
           </div>
         </div>
