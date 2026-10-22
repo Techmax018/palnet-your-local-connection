@@ -2,8 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { buildBootstrapScript, validateProvisionToken } from "@/lib/provisioning";
 
-const APP_HOST = "palnet-wifi.lovable.app";
-
 export const Route = createFileRoute("/api/public/provision/bootstrap")({
   server: {
     handlers: {
@@ -15,12 +13,16 @@ export const Route = createFileRoute("/api/public/provision/bootstrap")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: row } = await supabaseAdmin
+        const { data: row, error: lookupError } = await supabaseAdmin
           .from("provision_tokens")
-          .select("id, site_identity, is_used, expires_at, token")
+          .select("id, site_identity, is_used, expires_at, token, heartbeat_key")
           .eq("token", token)
           .maybeSingle();
 
+        if (lookupError) {
+          console.error("Could not look up bootstrap token.", lookupError);
+          return new Response("Could not validate token", { status: 500 });
+        }
         if (!row) return new Response("Invalid token", { status: 404 });
         if (row.is_used) return new Response("Token already used", { status: 410 });
 
@@ -29,15 +31,44 @@ export const Route = createFileRoute("/api/public/provision/bootstrap")({
           return new Response(validation.message ?? "Token invalid", { status: 410 });
         }
 
-        const heartbeatKey = `${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`;
-        const { data: claimed } = await supabaseAdmin
-          .from("provision_tokens")
-          .update({ is_used: true, used_at: new Date().toISOString(), heartbeat_key: heartbeatKey })
-          .eq("id", row.id)
-          .eq("is_used", false)
-          .select("id");
+        let heartbeatKey = row.heartbeat_key;
+        if (!heartbeatKey) {
+          const newHeartbeatKey = `${crypto.randomUUID().replace(/-/g, "")}${crypto.randomUUID().replace(/-/g, "")}`;
+          const { data: seeded, error: seedError } = await supabaseAdmin
+            .from("provision_tokens")
+            .update({ heartbeat_key: newHeartbeatKey })
+            .eq("id", row.id)
+            .eq("is_used", false)
+            .is("heartbeat_key", null)
+            .select("heartbeat_key")
+            .maybeSingle();
 
-        if (!claimed?.length) return new Response("Token already used", { status: 410 });
+          if (seedError) {
+            console.error("Could not initialize bootstrap heartbeat key.", seedError);
+            return new Response("Could not prepare bootstrap", { status: 500 });
+          }
+
+          heartbeatKey = seeded?.heartbeat_key ?? null;
+          if (!heartbeatKey) {
+            const { data: refreshed, error: refreshError } = await supabaseAdmin
+              .from("provision_tokens")
+              .select("is_used, heartbeat_key")
+              .eq("id", row.id)
+              .maybeSingle();
+
+            if (refreshError) {
+              console.error("Could not refresh bootstrap token state.", refreshError);
+              return new Response("Could not prepare bootstrap", { status: 500 });
+            }
+            if (!refreshed) return new Response("Invalid token", { status: 404 });
+            if (refreshed.is_used) return new Response("Token already used", { status: 410 });
+            heartbeatKey = refreshed.heartbeat_key;
+            if (!heartbeatKey) {
+              console.error("Bootstrap heartbeat key was not persisted for token.", row.id);
+              return new Response("Could not prepare bootstrap", { status: 500 });
+            }
+          }
+        }
 
         const sp = new URL(request.url).searchParams;
         const script = buildBootstrapScript({
