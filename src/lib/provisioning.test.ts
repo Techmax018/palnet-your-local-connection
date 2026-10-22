@@ -69,6 +69,8 @@ describe('zero-touch provisioning', () => {
     expect(script).toContain('source=":local serial \\\"unknown\\\";');
     expect(script).toContain(':foreach hotspotId in=[/ip hotspot find] do={ :if ([/ip hotspot get $hotspotId name] = "palnet-hotspot") do={ /ip hotspot remove $hotspotId } }');
     expect(script).toContain(':foreach profileId in=[/ip hotspot profile find] do={ :if ([/ip hotspot profile get $profileId name] = "palnet-profile") do={ /ip hotspot profile remove $profileId } }');
+    expect(script).toContain(':foreach gardenId in=[/ip hotspot walled-garden find] do={ :if ([/ip hotspot walled-garden get $gardenId comment] = "PalNet") do={ /ip hotspot walled-garden remove $gardenId } }');
+    expect(script).toContain(':foreach gardenIpId in=[/ip hotspot walled-garden ip find] do={ :if ([/ip hotspot walled-garden ip get $gardenIpId comment] = "PalNet") do={ /ip hotspot walled-garden ip remove $gardenIpId } }');
     expect(script).toContain('/ip hotspot profile add name="palnet-profile" hotspot-address="10.10.0.1"');
     expect(script).toContain('/system scheduler add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat"');
   });

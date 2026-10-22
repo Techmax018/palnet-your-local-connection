@@ -260,9 +260,9 @@ ${ports}
 :do { /file add name=${rosQuote("hotspot/login.html")} contents=${rosQuote(`<html><head><meta http-equiv="refresh" content="0; url=https://${portalHost}/?mac=\$(mac)&ip=\$(ip)&link=\$(link-login-only)&dst=\$(link-orig-esc)&err=\$(error-orig)"></head><body>Redirecting to PalNet...</body></html>`)} } on-error={ :log warning ${rosQuote("PalNet: could not write hotspot/login.html")} }
 /ip hotspot add name=${rosQuote("palnet-hotspot")} interface=${rosQuote(b)} address-pool=${rosQuote("palnet-pool")} profile=${rosQuote("palnet-profile")} disabled=no
 # --- Walled garden ---
-/ip hotspot walled-garden remove [find comment=${rosQuote("PalNet")}]
+:foreach gardenId in=[/ip hotspot walled-garden find] do={ :if ([/ip hotspot walled-garden get $gardenId comment] = ${rosQuote("PalNet")}) do={ /ip hotspot walled-garden remove $gardenId } }
 ${garden}
-/ip hotspot walled-garden ip remove [find comment=${rosQuote("PalNet")}]
+:foreach gardenIpId in=[/ip hotspot walled-garden ip find] do={ :if ([/ip hotspot walled-garden ip get $gardenIpId comment] = ${rosQuote("PalNet")}) do={ /ip hotspot walled-garden ip remove $gardenIpId } }
 ${gardenIp}
 # --- Anti-tethering (TTL=1) ---
 /ip firewall mangle remove [find comment=${rosQuote("PalNet-ttl")}]
