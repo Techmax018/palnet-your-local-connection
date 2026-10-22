@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession, useIsAdmin } from "@/hooks/usePalNet";
 import { AdminNotificationBell } from "@/components/AdminNotificationBell";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 export const Route = createFileRoute("/admin/_layout")({
   component: AdminLayout,
@@ -143,10 +144,10 @@ function Sidebar({
         {/* Logo */}
         <div className="relative shrink-0">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{ boxShadow: "0 0 18px rgba(0,243,255,0.35)" }}
           >
-            <img src="/favicon.png" alt="PalNet" className="h-9 w-9 object-contain" />
+            <BrandLogo className="size-9" imageClassName="size-9 rounded-xl object-contain" />
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d1117] bg-emerald-400" />
         </div>

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bell, Database, Key, Loader2, RotateCcw, Save, Settings, ShieldBan, Wifi } from "lucide-react";
+import { Bell, Database, Key, Loader2, RotateCcw, Save, Settings, ShieldBan, Sparkles, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { updateNetworkSetting, applyAntiTetheringToAllRouters } from "@/lib/palnet.functions";
+import { useSeasonalTheme } from "@/lib/seasonalThemes";
 
 export const Route = createFileRoute("/admin/_layout/settings")({
   head: () => ({
@@ -91,6 +92,8 @@ function ToggleRow({
 }
 
 function AdminSettings() {
+  const { enabled: seasonalThemesEnabled, setEnabled: setSeasonalThemesEnabled } =
+    useSeasonalTheme();
   const queryClient = useQueryClient();
   const saveSetting = useServerFn(updateNetworkSetting);
   const applyRules = useServerFn(applyAntiTetheringToAllRouters);
@@ -181,6 +184,22 @@ function AdminSettings() {
             placeholder="0700000000"
           />
         </div>
+      </Section>
+
+      <Section icon={Sparkles} title="Seasonal Display" sub="A local preference for this browser">
+        <ToggleRow
+          label="Enable Holiday & Seasonal Themes"
+          hint="Automatically show holiday branding and snowfall when in season"
+          checked={seasonalThemesEnabled}
+          onChange={(enabled) => {
+            try {
+              setSeasonalThemesEnabled(enabled);
+            } catch (error) {
+              console.error("Could not save seasonal theme preference.", error);
+              toast.error("Could not save your seasonal theme preference.");
+            }
+          }}
+        />
       </Section>
 
       <Section icon={ShieldBan} title="Device Sharing Controls" sub="Applied on every online router">

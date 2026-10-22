@@ -67,6 +67,8 @@ describe('zero-touch provisioning', () => {
     expect(script).toContain('source="');
     expect(script).not.toContain('source={');
     expect(script).toContain('source=":local serial \\\"unknown\\\";');
+    expect(script).toContain('/ip hotspot remove [find where name="palnet-hotspot"]');
+    expect(script).toContain('/ip hotspot profile remove [find where name="palnet-profile"]');
     expect(script).toContain('/ip hotspot profile add name="palnet-profile" hotspot-address="10.10.0.1"');
     expect(script).toContain('/system scheduler add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat"');
   });

@@ -193,6 +193,54 @@
   }
 }
 
+.seasonal-theme-container {
+  min-height: 100vh;
+}
+
+.seasonal-snowflake {
+  position: absolute;
+  top: -1vh;
+  left: var(--snow-left);
+  width: var(--snow-size);
+  height: var(--snow-size);
+  border-radius: 9999px;
+  background: var(--snow-color);
+  box-shadow: 0 0 5px color-mix(in oklab, var(--snow-color) 70%, transparent);
+  animation: palnet-snowfall var(--snow-duration) linear var(--snow-delay) infinite;
+  will-change: transform;
+}
+
+.seasonal-snowflake:nth-child(1)  { --snow-left: 3%;  --snow-size: 3px; --snow-color: white; --snow-duration: 15s; --snow-delay: -5s; }
+.seasonal-snowflake:nth-child(2)  { --snow-left: 8%;  --snow-size: 2px; --snow-color: #a5f3fc; --snow-duration: 18s; --snow-delay: -12s; }
+.seasonal-snowflake:nth-child(3)  { --snow-left: 14%; --snow-size: 4px; --snow-color: white; --snow-duration: 20s; --snow-delay: -2s; }
+.seasonal-snowflake:nth-child(4)  { --snow-left: 19%; --snow-size: 2px; --snow-color: #cffafe; --snow-duration: 16s; --snow-delay: -9s; }
+.seasonal-snowflake:nth-child(5)  { --snow-left: 25%; --snow-size: 3px; --snow-color: white; --snow-duration: 19s; --snow-delay: -15s; }
+.seasonal-snowflake:nth-child(6)  { --snow-left: 31%; --snow-size: 2px; --snow-color: #a5f3fc; --snow-duration: 17s; --snow-delay: -3s; }
+.seasonal-snowflake:nth-child(7)  { --snow-left: 37%; --snow-size: 4px; --snow-color: white; --snow-duration: 21s; --snow-delay: -11s; }
+.seasonal-snowflake:nth-child(8)  { --snow-left: 42%; --snow-size: 2px; --snow-color: #cffafe; --snow-duration: 15s; --snow-delay: -7s; }
+.seasonal-snowflake:nth-child(9)  { --snow-left: 48%; --snow-size: 3px; --snow-color: white; --snow-duration: 18s; --snow-delay: -13s; }
+.seasonal-snowflake:nth-child(10) { --snow-left: 54%; --snow-size: 2px; --snow-color: #a5f3fc; --snow-duration: 20s; --snow-delay: -4s; }
+.seasonal-snowflake:nth-child(11) { --snow-left: 60%; --snow-size: 4px; --snow-color: white; --snow-duration: 16s; --snow-delay: -10s; }
+.seasonal-snowflake:nth-child(12) { --snow-left: 65%; --snow-size: 2px; --snow-color: #cffafe; --snow-duration: 19s; --snow-delay: -1s; }
+.seasonal-snowflake:nth-child(13) { --snow-left: 71%; --snow-size: 3px; --snow-color: white; --snow-duration: 17s; --snow-delay: -14s; }
+.seasonal-snowflake:nth-child(14) { --snow-left: 77%; --snow-size: 2px; --snow-color: #a5f3fc; --snow-duration: 21s; --snow-delay: -6s; }
+.seasonal-snowflake:nth-child(15) { --snow-left: 82%; --snow-size: 4px; --snow-color: white; --snow-duration: 15s; --snow-delay: -16s; }
+.seasonal-snowflake:nth-child(16) { --snow-left: 88%; --snow-size: 2px; --snow-color: #cffafe; --snow-duration: 18s; --snow-delay: -8s; }
+.seasonal-snowflake:nth-child(17) { --snow-left: 93%; --snow-size: 3px; --snow-color: white; --snow-duration: 20s; --snow-delay: -3s; }
+.seasonal-snowflake:nth-child(18) { --snow-left: 98%; --snow-size: 2px; --snow-color: #a5f3fc; --snow-duration: 16s; --snow-delay: -12s; }
+
+@keyframes palnet-snowfall {
+  from { transform: translate3d(0, -2vh, 0); }
+  to { transform: translate3d(2vw, 104vh, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seasonal-snowflake {
+    animation: none;
+    display: none;
+  }
+}
+
 /* ──────────────────────────────────────
    PalNet Admin — dark luxury ISP theme
    ────────────────────────────────────── */

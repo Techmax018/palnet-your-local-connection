@@ -253,8 +253,8 @@ ${ports}
 /ip firewall nat remove [find comment=${rosQuote("PalNet-masq")}]
 /ip firewall nat add chain=srcnat out-interface=${rosQuote(net.wan)} action=masquerade comment=${rosQuote("PalNet-masq")}
 # --- Hotspot ---
-/ip hotspot remove [find name=${rosQuote("palnet-hotspot")}]
-/ip hotspot profile remove [find name=${rosQuote("palnet-profile")}]
+/ip hotspot remove [find where name=${rosQuote("palnet-hotspot")}]
+/ip hotspot profile remove [find where name=${rosQuote("palnet-profile")}]
 /ip hotspot profile add name=${rosQuote("palnet-profile")} hotspot-address=${rosQuote(net.gatewayIp)} dns-name=${rosQuote("login.palnet")} html-directory=hotspot login-by=http-chap,http-pap,mac-cookie
 :do { /file remove [find name=${rosQuote("hotspot/login.html")}] } on-error={}
 :do { /file add name=${rosQuote("hotspot/login.html")} contents=${rosQuote(`<html><head><meta http-equiv="refresh" content="0; url=https://${portalHost}/?mac=\$(mac)&ip=\$(ip)&link=\$(link-login-only)&dst=\$(link-orig-esc)&err=\$(error-orig)"></head><body>Redirecting to PalNet...</body></html>`)} } on-error={ :log warning ${rosQuote("PalNet: could not write hotspot/login.html")} }
