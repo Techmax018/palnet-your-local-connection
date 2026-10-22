@@ -42,6 +42,18 @@ export function rosEscape(value: string): string {
   return value.replace(/[^A-Za-z0-9_.-]/g, "");
 }
 
+export function rosQuote(value: string): string {
+  return `"${String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")}"`;
+}
+
+export function rosScriptSource(source: string): string {
+  return rosQuote(source);
+}
+
 export function createProvisionToken(siteIdentity: string): string {
   const normalized = normalizeSiteIdentity(siteIdentity).toLowerCase();
   const slug = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "site";
@@ -212,49 +224,49 @@ export function resolveNetwork(o: NetworkOverrides = {}): ResolvedNetwork {
 function buildNetworkSection(net: ResolvedNetwork, portalHost: string): string {
   const b = net.lanBridge;
   const ports = net.lanPorts
-    .map((p) => `:do { /interface bridge port add bridge="${b}" interface="${p}" comment="PalNet" } on-error={}`)
+    .map((p) => `:do { /interface bridge port add bridge=${rosQuote(b)} interface=${rosQuote(p)} comment=${rosQuote("PalNet")} } on-error={}`)
     .join("\n");
   const gardenHosts = [portalHost, "*payhero.co.ke", "backend.payhero.co.ke", "api.payhero.co.ke", "*safaricom.co.ke"];
   const garden = gardenHosts
-    .map((h) => `/ip hotspot walled-garden add dst-host="${h}" action=allow comment="PalNet"`)
+    .map((h) => `/ip hotspot walled-garden add dst-host=${rosQuote(h)} action=allow comment=${rosQuote("PalNet")}`)
     .join("\n");
   const gardenIp = gardenHosts
-    .map((h) => `/ip hotspot walled-garden ip add dst-host="${h}" action=accept comment="PalNet"`)
+    .map((h) => `/ip hotspot walled-garden ip add dst-host=${rosQuote(h)} action=accept comment=${rosQuote("PalNet")}`)
     .join("\n");
   return `# --- Network: bridge ---
-:if ([:len [/interface bridge find name="${b}"]] = 0) do={ /interface bridge add name="${b}" comment="PalNet" }
-/interface bridge port remove [find comment="PalNet"]
+:if ([:len [/interface bridge find name=${rosQuote(b)}]] = 0) do={ /interface bridge add name=${rosQuote(b)} comment=${rosQuote("PalNet")} }
+/interface bridge port remove [find comment=${rosQuote("PalNet")}]
 ${ports}
 # --- IP addressing ---
-/ip address remove [find comment="PalNet"]
-/ip address add address=${net.gatewayIp}/${net.prefix} interface="${b}" comment="PalNet"
+/ip address remove [find comment=${rosQuote("PalNet")}]
+/ip address add address=${net.gatewayIp}/${net.prefix} interface=${rosQuote(b)} comment=${rosQuote("PalNet")}
 # --- Pool & DHCP ---
-/ip dhcp-server remove [find name="palnet-dhcp"]
-/ip pool remove [find name="palnet-pool"]
-/ip pool add name="palnet-pool" ranges=${net.pool}
-/ip dhcp-server add name="palnet-dhcp" interface="${b}" address-pool="palnet-pool" lease-time=1h disabled=no
-/ip dhcp-server network remove [find comment="PalNet"]
-/ip dhcp-server network add address=${net.networkCidr} gateway=${net.gatewayIp} dns-server=1.1.1.1,8.8.8.8 comment="PalNet"
+/ip dhcp-server remove [find name=${rosQuote("palnet-dhcp")}]
+/ip pool remove [find name=${rosQuote("palnet-pool")}]
+/ip pool add name=${rosQuote("palnet-pool")} ranges=${net.pool}
+/ip dhcp-server add name=${rosQuote("palnet-dhcp")} interface=${rosQuote(b)} address-pool=${rosQuote("palnet-pool")} lease-time=1h disabled=no
+/ip dhcp-server network remove [find comment=${rosQuote("PalNet")}]
+/ip dhcp-server network add address=${net.networkCidr} gateway=${net.gatewayIp} dns-server=1.1.1.1,8.8.8.8 comment=${rosQuote("PalNet")}
 # --- DNS ---
 /ip dns set allow-remote-requests=yes servers=1.1.1.1,8.8.8.8
 # --- NAT ---
-/ip firewall nat remove [find comment="PalNet-masq"]
-/ip firewall nat add chain=srcnat out-interface="${net.wan}" action=masquerade comment="PalNet-masq"
+/ip firewall nat remove [find comment=${rosQuote("PalNet-masq")}]
+/ip firewall nat add chain=srcnat out-interface=${rosQuote(net.wan)} action=masquerade comment=${rosQuote("PalNet-masq")}
 # --- Hotspot ---
-/ip hotspot remove [find name="palnet-hotspot"]
-/ip hotspot profile remove [find name="palnet-profile"]
-/ip hotspot profile add name="palnet-profile" hotspot-address=${net.gatewayIp} dns-name="login.palnet" html-directory=hotspot login-by=http-chap,http-pap,mac-cookie
-:do { /file remove [find name="hotspot/login.html"] } on-error={}
-:do { /file add name="hotspot/login.html" contents="<html><head><meta http-equiv=\\"refresh\\" content=\\"0; url=https://${portalHost}/?mac=\\$(mac)&ip=\\$(ip)&link=\\$(link-login-only)&dst=\\$(link-orig-esc)&err=\\$(error-orig)\\"></head><body>Redirecting to PalNet...</body></html>" } on-error={ :log warning "PalNet: could not write hotspot/login.html" }
-/ip hotspot add name="palnet-hotspot" interface="${b}" address-pool="palnet-pool" profile="palnet-profile" disabled=no
+/ip hotspot remove [find name=${rosQuote("palnet-hotspot")}]
+/ip hotspot profile remove [find name=${rosQuote("palnet-profile")}]
+/ip hotspot profile add name=${rosQuote("palnet-profile")} hotspot-address=${rosQuote(net.gatewayIp)} dns-name=${rosQuote("login.palnet")} html-directory=hotspot login-by=http-chap,http-pap,mac-cookie
+:do { /file remove [find name=${rosQuote("hotspot/login.html")}] } on-error={}
+:do { /file add name=${rosQuote("hotspot/login.html")} contents=${rosQuote(`<html><head><meta http-equiv="refresh" content="0; url=https://${portalHost}/?mac=\$(mac)&ip=\$(ip)&link=\$(link-login-only)&dst=\$(link-orig-esc)&err=\$(error-orig)"></head><body>Redirecting to PalNet...</body></html>`)} } on-error={ :log warning ${rosQuote("PalNet: could not write hotspot/login.html")} }
+/ip hotspot add name=${rosQuote("palnet-hotspot")} interface=${rosQuote(b)} address-pool=${rosQuote("palnet-pool")} profile=${rosQuote("palnet-profile")} disabled=no
 # --- Walled garden ---
-/ip hotspot walled-garden remove [find comment="PalNet"]
+/ip hotspot walled-garden remove [find comment=${rosQuote("PalNet")}]
 ${garden}
-/ip hotspot walled-garden ip remove [find comment="PalNet"]
+/ip hotspot walled-garden ip remove [find comment=${rosQuote("PalNet")}]
 ${gardenIp}
 # --- Anti-tethering (TTL=1) ---
-/ip firewall mangle remove [find comment="PalNet-ttl"]
-/ip firewall mangle add chain=postrouting out-interface="${b}" action=change-ttl new-ttl=set:1 passthrough=no comment="PalNet-ttl"
+/ip firewall mangle remove [find comment=${rosQuote("PalNet-ttl")}]
+/ip firewall mangle add chain=postrouting out-interface=${rosQuote(b)} action=change-ttl new-ttl=set:1 passthrough=no comment=${rosQuote("PalNet-ttl")}
 `;
 }
 
@@ -279,54 +291,60 @@ export function buildBootstrapScript({
   const registerUrl = `${baseUrl}/api/public/provision/register`;
   const heartbeatUrl = `${baseUrl}/api/public/provision/heartbeat`;
   const usersUrl = `${baseUrl}/api/public/provision/users`;
-  // RouterOS: variable names must not contain "_"; inside strings a quote is \" .
   const q = '\\"';
   const regPayload =
     `("{${q}token${q}:${q}${tok}${q},${q}site_identity${q}:${q}${site}${q},${q}device_id${q}:${q}" . $board . "${q},${q}serial_number${q}:${q}" . $serial . "${q},${q}model${q}:${q}" . $model . "${q},${q}mac_address${q}:${q}" . $mac . "${q},${q}routeros_version${q}:${q}" . $ros . "${q},${q}board_name${q}:${q}" . $board . "${q}}")`;
   const hbPayload =
     `("{${q}site${q}:${q}" . $site . "${q},${q}device_id${q}:${q}" . $site . "${q},${q}cpu_load${q}:${q}" . $cpu . "${q},${q}free_memory${q}:${q}" . $mem . "${q},${q}uptime${q}:${q}" . $up . "${q}}")`;
+
+  const registerSource = [
+    ':local serial "unknown"',
+    ':do { :set serial [/system routerboard get serial-number] } on-error={}',
+    ':local model [/system resource get board-name]',
+    ':local mac ""',
+    ':do { :set mac [/interface ethernet get [find default-name=ether1] mac-address] } on-error={}',
+    ':local ros [/system resource get version]',
+    ':local board [/system identity get name]',
+    `:local payload ${regPayload}`,
+    `/tool fetch url=${rosQuote(registerUrl)} mode=https http-method=post output=none http-header-field=${rosQuote("Content-Type: application/json")} http-data=$payload`,
+  ].join("; ");
+
+  const heartbeatSource = [
+    ':local cpu [/system resource get cpu-load]',
+    ':local mem [/system resource get free-memory]',
+    ':local up [/system resource get uptime]',
+    ':local site [/system identity get name]',
+    `:local payload ${hbPayload}`,
+    `/tool fetch url=${rosQuote(heartbeatUrl)} mode=https http-method=post output=none http-header-field=${rosQuote(`Content-Type: application/json,X-PalNet-Key: ${key}`)} http-data=$payload`,
+  ].join("; ");
+
+  const userSyncSource = [
+    ':do {',
+    `/tool fetch url=${rosQuote(usersUrl)} mode=https http-header-field=${rosQuote(`X-PalNet-Key: ${key}`)} dst-path=${rosQuote("palnet-users.rsc")}`,
+    ':delay 1s',
+    '/import file-name="palnet-users.rsc"',
+    `} on-error={ :log warning ${rosQuote("PalNet: user sync failed")} }`,
+  ].join("; ");
+
   return `# PalNet bootstrap (RouterOS 7.x) config ${ver}
 /system backup save name="before-palnet-provision" dont-encrypt=yes
-/system identity set name="${site}"
+/system identity set name=${rosQuote(site)}
 ${networkSection}
-/system script remove [find name="PalNetRegister"]
-/system script add name="PalNetRegister" policy=read,write,test source={
-:local serial "unknown"
-:do { :set serial [/system routerboard get serial-number] } on-error={}
-:local model [/system resource get board-name]
-:local mac ""
-:do { :set mac [/interface ethernet get [find default-name=ether1] mac-address] } on-error={}
-:local ros [/system resource get version]
-:local board [/system identity get name]
-:local payload ${regPayload}
-/tool fetch url="${registerUrl}" mode=https http-method=post output=none http-header-field="Content-Type: application/json" http-data=$payload
-}
-/system script remove [find name="PalNetHeartbeat"]
-/system script add name="PalNetHeartbeat" policy=read,write,test source={
-:local cpu [/system resource get cpu-load]
-:local mem [/system resource get free-memory]
-:local up [/system resource get uptime]
-:local site [/system identity get name]
-:local payload ${hbPayload}
-/tool fetch url="${heartbeatUrl}" mode=https http-method=post output=none http-header-field="Content-Type: application/json,X-PalNet-Key: ${key}" http-data=$payload
-}
-/system script remove [find name="PalNetUsers"]
-/system script add name="PalNetUsers" policy=read,write,test source={
-:do {
-/tool fetch url="${usersUrl}" mode=https http-header-field="X-PalNet-Key: ${key}" dst-path="palnet-users.rsc"
-:delay 1s
-/import file-name="palnet-users.rsc"
-} on-error={ :log warning "PalNet: user sync failed" }
-}
-/system scheduler remove [find name="PalNetUsersSchedule"]
-/system scheduler add name="PalNetUsersSchedule" interval=20s on-event="PalNetUsers" start-time=startup
-/system scheduler remove [find name="PalNetRegisterSchedule"]
-/system scheduler add name="PalNetRegisterSchedule" interval=5m on-event="PalNetRegister" start-time=startup
-/system scheduler remove [find name="PalNetHeartbeatSchedule"]
-/system scheduler add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat" start-time=startup
+/system script remove [find name=${rosQuote("PalNetRegister")}]
+/system script add name=${rosQuote("PalNetRegister")} owner=${rosQuote("admin")} policy=read,write,test,api source=${rosScriptSource(registerSource)}
+/system script remove [find name=${rosQuote("PalNetHeartbeat")}]
+/system script add name=${rosQuote("PalNetHeartbeat")} owner=${rosQuote("admin")} policy=read,write,test,api source=${rosScriptSource(heartbeatSource)}
+/system script remove [find name=${rosQuote("PalNetUsers")}]
+/system script add name=${rosQuote("PalNetUsers")} owner=${rosQuote("admin")} policy=read,write,test,api source=${rosScriptSource(userSyncSource)}
+/system scheduler remove [find name=${rosQuote("PalNetUsersSchedule")}]
+/system scheduler add name=${rosQuote("PalNetUsersSchedule")} interval=20s on-event=${rosQuote("PalNetUsers")} start-time=startup
+/system scheduler remove [find name=${rosQuote("PalNetRegisterSchedule")}]
+/system scheduler add name=${rosQuote("PalNetRegisterSchedule")} interval=5m on-event=${rosQuote("PalNetRegister")} start-time=startup
+/system scheduler remove [find name=${rosQuote("PalNetHeartbeatSchedule")}]
+/system scheduler add name=${rosQuote("PalNetHeartbeatSchedule")} interval=1m on-event=${rosQuote("PalNetHeartbeat")} start-time=startup
 :delay 2s
-/system script run PalNetRegister
-/system script run PalNetHeartbeat
-:log info "PalNet provisioning complete"
+/system script run ${rosQuote("PalNetRegister")}
+/system script run ${rosQuote("PalNetHeartbeat")}
+:log info ${rosQuote("PalNet provisioning complete")}
 `;
 }

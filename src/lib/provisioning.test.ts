@@ -54,6 +54,23 @@ describe('zero-touch provisioning', () => {
     expect(script).toContain('https://example.com/api/public/provision/register');
   });
 
+  it('uses RouterOS v7-safe quoted script strings and valid hotspot config', () => {
+    const script = buildBootstrapScript({
+      siteIdentity: 'Kakamega',
+      token: 'prov_kakamega_0b7f595b053f4cd5',
+      heartbeatKey: 'test-heartbeat-key',
+      configVersion: 'v2',
+      apiBaseUrl: 'https://palnet-wifi.lovable.app',
+    });
+
+    expect(script).toContain('policy=read,write,test,api');
+    expect(script).toContain('source="');
+    expect(script).not.toContain('source={');
+    expect(script).toContain('source=":local serial \\\"unknown\\\";');
+    expect(script).toContain('/ip hotspot profile add name="palnet-profile" hotspot-address="10.10.0.1"');
+    expect(script).toContain('/system scheduler add name="PalNetHeartbeatSchedule" interval=1m on-event="PalNetHeartbeat"');
+  });
+
   it('prefers the runtime or environment base URL over the hardcoded default', () => {
     expect(resolveProvisionApiBaseUrl('https://example.com')).toBe('https://example.com');
     expect(resolveProvisionApiBaseUrl()).toBe('https://palnet-wifi.lovable.app');
